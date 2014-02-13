@@ -1,0 +1,9 @@
+Setup
+
+Windows Setup
+	Install Pyhton 2.7 http://www.python.org/download/
+		Python 2.7.6 Windows X86-64 Installer
+	Install pip http://www.pip-installer.org/en/latest/installing.html
+		python get-pip.py	
+	Install Tornado
+		pip install tornado
