@@ -4,7 +4,8 @@ import tornado.web
 import json
 
 
-def main(port=5000):
+def main(port=5500):
+    print "LocalHost: " + str(port)
     ioloop = tornado.ioloop.IOLoop.instance()
     application = tornado.web.Application([
         (r"/(.*)", BaseHandler)
@@ -19,8 +20,8 @@ def main(port=5000):
 
 class BaseHandler(tornado.web.RequestHandler):
     def get(self, call):
+        print "Message Received: \n" + str(self.request.body)
         try:
-            #self.write("Welcome to the chatroom\n")
             self.finish()
         except:
             # log error message
@@ -28,20 +29,25 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def post(self, call):
         try:
+            print "Message Received: \n" + str(self.request.body)
             data = json.loads(self.request.body)
             #self.write(data["Type"])
-            request = data["Type"]
-            if request == 'Chat':
+            requestType = data["Type"]
+            if requestType == 'Chat':
                 message = chat_handler(data)
-            elif request == 'Server Session Request':
+            elif requestType == 'Server Session Request':
                 message = session_request_handler(data)
-            elif request == 'Game List Request':
+            elif requestType == 'Game List Request':
                 message = game_list_request_handler(data)
-            elif request == 'Game Inform':
+            elif requestType == 'Game Inform':
                 message = game_inform_request_handler(data)
-            elif request == 'Terminate Session':
-                message = terminate_request_handler(data)
-            elif request == 'Error':
+            elif requestType == 'Success':
+                message = sucesss_request_handler(data)
+            elif requestType == 'Fail':
+                message = fail_request_handler(data)
+            elif requestType == 'Terminate Session':
+                message = terminate_session_request_handler(data)
+            elif requestType == 'Error':
                 message = error_request_handler(data)
             else:
                 message = error_request_handler(data)
@@ -80,7 +86,7 @@ def session_response(session):
         response = {'Type': 'Success', 'Session': session, 'Message': message, 'Detail': detail}
         return response
     else:
-        message = "Not authenticated"
+        message = "Authentication Failure"
         detail = "Authentication unsuccessful - invalid username or password"
         response = {'Type': 'Fail', 'Session': session, 'Message': message, 'Detail': detail}
         return response
@@ -112,23 +118,65 @@ def game_inform_request_handler(data):
     return game_inform_response(data, data["Session"])
 
 
-def update_game(data):
-    return {}
+#def update_game(data):
+#    return {}
 
 
 def game_inform_response(data, session):
     if session_valid(session):
+        add_game(data)
         message = "Game Inform"
         detail = "Termination successful"
         response = {'Type': 'Success', 'Session': session, 'Message': message, 'Detail': detail}
+        return response
     else:
-        message = "Not authenticated"
+        message = "Authentication Failure"
         detail = "Action may only be performed by authenticated clients"
         response = {'Type': 'Fail', 'Session': session, 'Message': message, 'Detail': detail}
+        return response
+
+
+def add_game(data):
+    pass
+
+
+def sucesss_request_handler(data):
+    return success_response(data)
+
+
+def success_response(data):
+    if session_valid(data["Session"]):
+        print "Session: " + str(data["Session"])
+        print "Player: " + str(data["Player Name"])
+        print "Request:" + str(data["Message"])
+        print "Success: " + str(data["Detail"])
+        response = ""
+    else:
+        message = "Authentication Failure"
+        detail = "Action may only be performed by authenticated clients"
+        response = {'Type': 'Fail', 'Session': data["Session"], 'Message': message, 'Detail': detail}
     return response
 
 
-def terminate_request_handler(data):
+def fail_request_handler(data):
+    return fail_response(data)
+
+
+def fail_response(data):
+    if session_valid(data["Session"]):
+        print "Session: " + str(data["Session"])
+        print "Player: " + str(data["Player Name"])
+        print "Request:" + str(data["Message"])
+        print "Fail: " + str(data["Detail"])
+        response = ""
+    else:
+        message = "Authentication Failure"
+        detail = "Action may only be performed by authenticated clients"
+        response = {'Type': 'Fail', 'Session': data["Session"], 'Message': message, 'Detail': detail}
+    return response
+
+
+def terminate_session_request_handler(data):
     return terminate_response(data["Session"])
 
 
@@ -141,7 +189,7 @@ def terminate_response(session):
         else:
             response = error_response(session)
     else:
-        message = "Not authenticated"
+        message = "Authentication Failure"
         detail = "Action may only be performed by authenticated clients"
         response = {'Type': 'Fail', 'Session': session, 'Message': message, 'Detail': detail}
     return response
