@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <title>WebSockets Hello World</title>
+    <meta charset="utf-8" />
+    <style type="text/css">
+      body {
+        text-align: center;
+        min-width: 500px;
+      }
+    </style>
+    <script src="http://code.jquery.com/jquery.min.js"></script>
+	<script src="Client.js"></script>
+      <script>
+        $(document).ready(function () {
+            Client.Setup("Platform", {})
+            Client.Account("username", "password")
+            Client.WebsocketConnect("localhost", "5500")
+
+            setTimeout(function(){Client.WebSocketSend(ServerClient.ServerSessionRequest(Client.session, Client.username, Client.password));}, 1000);
+
+      });
+    </script>
+  </head>
+ 
+  <body>
+    <h1>Web Client</h1>
+    <div>
+    </div>
+  </body>
+</html>
