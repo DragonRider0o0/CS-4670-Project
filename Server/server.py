@@ -4,16 +4,91 @@ import tornado.ioloop
 import tornado.web
 import tornado.netutil
 import json
+import pymongo
 import functools
 import socket
 
-client = None
+server = None
+database = None
 webSocketClients = []
+mongoClient = None
 
 def main(port=5500):
-    global client
-    client = Server(port)
+    global database
+    database = Database()
+    global server
+    server = Server(port)
 
+
+
+class Database:
+    name = "Server"
+    web_sockets = "WebSockets"
+    games = "Games"
+    users = "Users"
+    sessions = "Sessions"
+    messages = "Messages"
+    database = None
+
+    def __init__(self):
+        global mongoClient
+        from pymongo import MongoClient
+        mongoClient = MongoClient()
+        self.database = mongoClient[self.name]
+
+    def get_web_sockets(self):
+        collection = self.database[self.web_sockets]
+        documents = collection.find()
+        return documents
+
+    def get_games(self):
+        collection = self.database[self.games]
+        documents = collection.find()
+        return documents
+
+    def get_user(self, username):
+        collection = self.database[self.users]
+        document = collection.find_one({"Username": username})
+        return document
+
+    def get_session(self, session_number):
+        collection = self.database[self.sessions]
+        document = collection.find_one({"Session": session_number})
+        return document
+
+    def get_message(self, session_number):
+        collection = self.database[self.messages]
+        document = collection.find_one({"Session": session_number})
+        return document
+
+    def add_web_socket(self, web_socket):
+        document = {"WebSocket": web_socket, "Count": 0}
+        collection = self.database[self.web_sockets]
+        document_id = collection.insert(document)
+        return document_id
+
+    def add_game(self, game):
+        collection = self.database[self.games]
+        document_id = collection.insert(game)
+        return document_id
+
+    def add_user(self, user):
+        collection = self.database[self.users]
+        document_id = collection.insert(user)
+        return document_id
+
+    def add_message(self, message):
+        collection = self.database[self.messages]
+        document_id = collection.insert(message)
+        return document_id
+
+    def remove_web_socket(self, web_socket):
+        collection = self.database[self.web_sockets]
+        collection.remove(web_socket, 1)
+        #document_id = collection.(web_socket)
+        #return document_id
+
+    #def setup(self):
 
 
 
@@ -119,6 +194,10 @@ class WebSocketBaseHandler(tornado.websocket.WebSocketHandler):
             global webSocketClients
             print "WebSocket Opened"
             webSocketClients.append(self)
+            print "Adding websocket to database\n"
+            global database
+            #database.add_web_socket(self.)
+            print self.__str__()
 
         def on_message(self, request):
             data = json.loads(request)
@@ -129,6 +208,10 @@ class WebSocketBaseHandler(tornado.websocket.WebSocketHandler):
             global webSocketClients
             print "WebSocket Opened"
             webSocketClients.remove(self)
+            #global database
+            #database.remove_web_socket(self)
+            print "Removing websocket from database\n"
+
 
 
 def client_server_chat_handler(data):
@@ -136,6 +219,10 @@ def client_server_chat_handler(data):
     message = client_server_chat_response(data)
     for webSocketClient in webSocketClients:
         webSocketClient.write_message(message)
+
+    global database
+    for websocket in database.get_web_sockets():
+        print "Retreived websocket: " + websocket + "\n"
     return client_server_chat_response(message)
 
 

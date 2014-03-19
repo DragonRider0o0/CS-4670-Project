@@ -1,0 +1,5 @@
+Download and extract MongoDB
+Create C:\data folder
+Create C:\data\db folder
+Run mongod.exe
+Run pip install pymongo 
