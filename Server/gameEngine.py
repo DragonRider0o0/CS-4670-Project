@@ -14,7 +14,7 @@ database = None
 webSocketClients = {}
 mongoClient = None
 webSocketIndex = 0
-serverClient = None
+http_client = None
 source = "Game Engine"
 server = {
     'ip': "127.0.0.1",
@@ -27,7 +27,6 @@ def main(port=6500):
     database = Database()
     global gameEngine
     gameEngine = GameEngine(port)
-
 
 
 class Database:
@@ -163,19 +162,14 @@ class Database:
 
 class GameEngine:
     def __init__(self, port):
+        global http_client
+        global server
         print "LocalHost: " + str(port)
-        #global serverClient
 
-
+        global http_client
+        http_client = httplib.HTTPConnection(server['ip'], server['port'])
         http_body = json.dumps(server_game_engine_game_inform_request({'Title': 'Test'}))
-        #response = urllib2.urlopen('localhost:5500', http_body)
-        http_client = httplib.HTTPConnection("localhost", 5500)
-        http_client.request("POST", "/", http_body)
-        response = http_client.getresponse()
-        print response.read()
-
-        #serverClient = AsyncHTTPClient()
-
+        send_server_http_message(http_body)
 
         http_ioloop = tornado.ioloop.IOLoop.instance()
         application = tornado.web.Application([
@@ -188,6 +182,14 @@ class GameEngine:
             http_ioloop.start()
         except KeyboardInterrupt:
             pass
+
+
+def send_server_http_message(http_body):
+    global http_client
+    http_client.request("POST", "/", http_body)
+    response = http_client.getresponse()
+    print response.read()
+    http_client.close()
 
 
 def process_message(data):

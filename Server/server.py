@@ -1,3 +1,4 @@
+import httplib
 from operator import eq
 import tornado.websocket
 import tornado.httpserver
@@ -16,6 +17,10 @@ webSocketClients = {}
 mongoClient = None
 webSocketIndex = 0
 source = "Server"
+test_game_engine = {
+    'ip': "127.0.0.1",
+    'port': '6500'
+}
 
 
 def main(port=5500):
@@ -115,8 +120,6 @@ class Database:
 class Server:
     def __init__(self, port):
         print "LocalHost: " + str(port)
-        global gameEngineClient
-        gameEngineClient = AsyncHTTPClient()
         http_ioloop = tornado.ioloop.IOLoop.instance()
         application = tornado.web.Application([
             (r"/(.*)", HTTPBaseHandler)
@@ -132,6 +135,14 @@ class Server:
         #    tcp_ioloop.start()
         except KeyboardInterrupt:
             pass
+
+
+def send_game_engine_http_message(http_body, game_engine):
+    http_client = httplib.HTTPConnection(game_engine['ip'], game_engine['port'])
+    http_client.request("POST", "/", http_body)
+    response = http_client.getresponse()
+    print response.read()
+    http_client.close()
 
 
 def process_message(data):
@@ -436,7 +447,12 @@ def game_engine_server_game_inform_request_handler(data):
 
 
 def game_engine_server_game_inform_response(data):
+    global test_game_engine
     game_engine_server_add_game(data)
+
+    http_body = json.dumps(server_game_engine_server_session_inform_request({'SessionNumber': 0, 'Username': 'Test'}))
+    send_game_engine_http_message(http_body, test_game_engine)
+
     return {}
 
 
