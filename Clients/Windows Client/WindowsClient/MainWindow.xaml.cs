@@ -34,9 +34,14 @@ namespace WindowsClient
             Client.Account("username", "password");
 
             string serverAddressString = "http:\\\\localhost";
-            UriBuilder uriBuilder = new UriBuilder(serverAddressString);
-            uriBuilder.Port = 5500;
-            Client.HTTPServerConnect(uriBuilder.Uri);
+            UriBuilder serverURI = new UriBuilder(serverAddressString);
+            serverURI.Port = 5500;
+            Client.HTTPServerConnect(serverURI.Uri);
+
+            string gameEngineAddressString = "http:\\\\localhost";
+            UriBuilder gameEngineURI = new UriBuilder(serverAddressString);
+            gameEngineURI.Port = 6500;
+            //Client.HTTPGameEngineConnect(gameEngineURI.Uri);
         }
 
         private void testServer()

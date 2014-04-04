@@ -1,7 +1,7 @@
 var Client = {
     serverWebSocket: null,
     serverURI: "",
-    session: 0,
+    sessionNumber: 0,
     player: {
         Name: ""
     },
@@ -36,7 +36,7 @@ var Client = {
     },
     WebsocketOnConnect: function (evt) {
         var message;
-        message = ServerClient.ServerChatRequest(Client.session, Client.username, ("User: " + Client.username + " connected"), Client.status);
+        message = ServerClient.ServerChatRequest(Client.sessionNumber, Client.username, ("User: " + Client.username + " connected"), Client.status);
         Client.serverWebSocket.send(message);
     },
     WebsocketOnDisconnect: function (evt) {
@@ -49,13 +49,13 @@ var Client = {
 		alert(message);
         var response = JSON.parse(message)
         if (response.Source == "Server") {
-            if (response.Type == "Server Chat") {
-                ServerClient.ServerChatHandler(response);
-            }
-            else if (response.Type == "Server Session Response") {
+            if (response.Type == "Server Session") {
                 ServerClient.ServerSessionHandler(response);
             }
-            else if (response.Type == "Game List Response") {
+            else if (response.Type == "Server Chat") {
+                ServerClient.ServerChatHandler(response);
+            }
+            else if (response.Type == "Game List") {
                 ServerClient.ServerGameListHandler(response);
             }
             else if (response.Type == "Success") {
@@ -69,11 +69,11 @@ var Client = {
             }
         }
         else if (response.Source == "Game Engine") {
-            if (response.Type == "Game Chat") {
-                GameEngineClient.GameChatHandler(response);
-            }
-            else if (response.Type == "Game Session Response") {
+            if (response.Type == "Game Session") {
                 GameEngineClient.GameSessionHandler(response);
+            }
+            else if (response.Type == "Game Chat") {
+                GameEngineClient.GameChatHandler(response);
             }
             else if (response.Type == "Game Update") {
                 GameEngineClient.GameUpdateHandler(response);
@@ -92,68 +92,20 @@ var Client = {
 }
 var ServerClient = {
     Source: "Client",
-    ServerErrorRequest: function (session, command, message) {
-        var serverErrorRequest = {
-            Type: "Error",
-            Session: session,
-            Command: command,
-            Message: message,
-            Source: this.Source
-        };
-        return JSON.stringify(serverErrorRequest);
-    },
-    ServerSucessRequest: function (session, command, message) {
-        var serverSucessRequest = {
-            Type: "Success",
-            Session: session,
-            Command: command,
-            Message: message,
-            Source: this.Source
-        };
-        return JSON.stringify(serverSucessRequest);
-    },
-    ServerFailRequest: function (session, command, message) {
-        var serverFailRequest = {
-            Type: "Fail",
-            Session: session,
-            Command: command,
-            Message: message,
-            Source: this.Source
-        };
-        return JSON.stringify(serverFailRequest);
-    },
-    ServerTerminateSessionRequest: function (session) {
-        var serverTerminateSessionRequest = {
-            Type: "Terminate Session",
-            Session: session,
-            Source: this.Source
-        };
-        return JSON.stringify(serverTerminateSessionRequest);
-    },
-    ServerGameListRequest: function (session, platform, features) {
-        var serverGameListRequest = {
-            Type: "Game List Request",
-            Session: session,
-            Platform: platform,
-            Features: features,
-            Source: this.Source
-        };
-        return JSON.stringify(serverGameListRequest);
-    },
-    ServerSessionRequest: function (session, username, password) {
+    ServerSessionRequest: function (sessionNumber, username, password) {
         var serverSessionRequest = {
             Type: "Server Session Request",
-            Session: session,
+            SessionNumber: sessionNumber,
             Username: username,
             Password: password,
             Source: this.Source
         };
         return JSON.stringify(serverSessionRequest);
     },
-    ServerChatRequest: function (session, username, message, status) {
+    ServerChatRequest: function (sessionNumber, username, message, status) {
         var serverChatRequest = {
             Type: "Server Chat",
-            Session: session,
+            SessionNumber: sessionNumber,
             Username: username,
             Message: message,
             Status: status,
@@ -161,94 +113,64 @@ var ServerClient = {
         };
         return JSON.stringify(serverChatRequest);
     },
-    ServerErrorHandler: function (errorData) {
+    ServerGetChatRequest: function (sessionNumber, username) {
+        var serverGetChatRequest = {
+            Type: "Get Server Chat",
+            SessionNumber: sessionNumber,
+            Username: username,
+            Source: this.Source
+        };
+        return JSON.stringify(serverGetChatRequest);
+    },
+    ServerGetGameList: function (sessionNumber, username) {
+        var serverGetGameListRequest = {
+            Type: "Get Game List",
+            SessionNumber: sessionNumber,
+            Username: username,
+            Source: this.Source
+        };
+        return JSON.stringify(serverGetGameListRequest);
+    },
+    ServerTerminateSessionRequest: function (sessionNumber, username) {
+        var serverTerminateSessionRequest = {
+            Type: "Terminate Session",
+            SessionNumber: sessionNumber,
+            Username: username,
+            Source: this.Source
+        };
+        return JSON.stringify(serverTerminateSessionRequest);
+    },
+
+    ServerSessionHandler: function (SessionData) {
+        Client.sessionNumber = SessionData.SessionNumber;
+    },
+    ServerChatHandler: function (chatData) {
+    },
+    ServerGameListHandler: function (gameListData) {
+        Client.gameList = gameListData.Games;
     },
     ServerSuccessHandler: function (successData) {
     },
     ServerFailHandler: function (failData) {
     },
-    ServerGameListHandler: function (gameListData) {
-        Client.gameList = gameListData.Games;
-    },
-    ServerSessionHandler: function (sessionData) {
-        Client.session = sessionData.Session;
-    },
-    ServerChatHandler: function (chatData) {
+    ServerErrorHandler: function (errorData) {
     }
 };
 var GameEngineClient = {
     Source: "Client",
-    GameErrorRequest: function (session, command, message) {
-        var gameErrorRequest =
-        {
-            Type: "Error",
-            Session: session,
-            Command: command,
-            Message: message,
-            Source: this.Source
-        };
-        return JSON.stringify(gameErrorRequest);
-    },
-    GameSuccessRequest: function (session, command, message) {
-        var gameErrorRequest =
-        {
-            Type: "Success",
-            Session: session,
-            Command: command,
-            Message: message,
-            Source: this.Source
-        };
-        return JSON.stringify(gameErrorRequest);
-    },
-    GameFailRequest: function (session, command, message) {
-        var gameFailRequest =
-        {
-            Type: "Fail",
-            Session: session,
-            Command: command,
-            Message: message,
-            Source: this.Source
-        };
-        return JSON.stringify(gameFailRequest);
-    },
-    GameTerminateRequest: function (session) {
-        var gameTerminateRequest = {
-            Type: "Terminate Game",
-            Session: session,
-            Source: this.Source
-        };
-        return JSON.stringify(gameTerminateRequest);
-    },
-    GameUpdateRequest: function (session) {
-        var gameUpdateRequest = {
-            Type: "Game Update Request",
-            Session: session,
-            Source: this.Source
-        };
-        return JSON.stringify(gameUpdateRequest);
-    },
-    GameCommandRequest: function (session, command) {
-        var gameCommandRequest = {
-            Type: "Game Command",
-            Session: session,
-            Command: command,
-            Source: this.Source
-        };
-        return JSON.stringify(gameCommandRequest);
-    },
-    GameSessionRequest: function (session, username) {
+    GameSessionRequest: function (sessionNumber, username) {
         var gameSessionRequest = {
             Type: "Game Session Request",
-            Session: session,
+            SessionNumber: sessionNumber,
             Username: username,
             Source: this.Source
         };
         return JSON.stringify(gameSessionRequest);
     },
-    GameChatRequest: function (session, playerName, message, status) {
+    GameChatRequest: function (sessionNumber, playerName, message, status) {
         var gameChatRequest = {
             Type: "Game Chat",
-            Session: session,
+            SessionNumber: sessionNumber,
             PlayerName: playerName,
             Message: message,
             Status: status,
@@ -256,18 +178,56 @@ var GameEngineClient = {
         };
         return JSON.stringify(gameChatRequest);
     },
-    GameErrorHandler: function (errorData) {
+    GameGetChatRequest: function (sessionNumber, playerName) {
+        var getChatRequest = {
+            Type: "Get Chat",
+            SessionNumber: sessionNumber,
+            PlayerName: playerName,
+            Source: this.Source
+        };
+        return JSON.stringify(getChatRequest);
+    },
+    GameGetUpdateRequest: function (sessionNumber, playerName) {
+        var getGameUpdateRequest = {
+            Type: "Get Game Update",
+            SessionNumber: sessionNumber,
+            PlayerName: playerName,
+            Source: this.Source
+        };
+        return JSON.stringify(getGameUpdateRequest);
+    },
+    GameCommandRequest: function (sessionNumber, playerName, command) {
+        var gameCommandRequest = {
+            Type: "Game Command",
+            SessionNumber: sessionNumber,
+            PlayerName: playerName,
+            Command: command,
+            Source: this.Source
+        };
+        return JSON.stringify(gameCommandRequest);
+    },
+    GameTerminateRequest: function (sessionNumber, playerName) {
+        var gameTerminateRequest = {
+            Type: "Terminate Game",
+            SessionNumber: sessionNumber,
+            PlayerName: playerName,
+            Source: this.Source
+        };
+        return JSON.stringify(gameTerminateRequest);
+    },
+
+    GameSessionHandler: function (SessionData) {
+        Client.player = SessionData.Player;
+    },
+    GameChatHandler: function (chatData) {
+    },
+    GameUpdateHandler: function (gameUpdateData) {
+        Client.game = gameUpdateData.Update;
     },
     GameSuccessHandler: function (successData) {
     },
     GameFailHandler: function (failData) {
     },
-    GameUpdateHandler: function (gameUpdateData) {
-        Client.game = gameUpdateData.Update;
-    },
-    GameSessionHandler: function (sessionData) {
-        Client.player = sessionData.Player;
-    },
-    GameChatHandler: function (chatData) {
+    GameErrorHandler: function (errorData) {
     }
 };
