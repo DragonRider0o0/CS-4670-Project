@@ -189,9 +189,8 @@ class HTTPBaseHandler(tornado.web.RequestHandler):
             response = process_message(data)
             self.write(json.dumps(response))
             self.finish()
-        except:
-            # log error message
-            pass
+        except :
+            print "Unexpected error:", sys.exc_info()[0]
 
 
 class WebSocketBaseHandler(tornado.websocket.WebSocketHandler):

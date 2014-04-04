@@ -5,6 +5,8 @@ import tornado.web
 import tornado.websocket
 from tornado.httpclient import AsyncHTTPClient
 import json
+#import urllib2
+import httplib
 
 
 gameEngine = None
@@ -25,6 +27,7 @@ def main(port=6500):
     database = Database()
     global gameEngine
     gameEngine = GameEngine(port)
+
 
 
 class Database:
@@ -161,8 +164,19 @@ class Database:
 class GameEngine:
     def __init__(self, port):
         print "LocalHost: " + str(port)
-        global serverClient
-        serverClient = AsyncHTTPClient()
+        #global serverClient
+
+
+        http_body = json.dumps(server_game_engine_game_inform_request({'Title': 'Test'}))
+        #response = urllib2.urlopen('localhost:5500', http_body)
+        http_client = httplib.HTTPConnection("localhost", 5500)
+        http_client.request("POST", "/", http_body)
+        response = http_client.getresponse()
+        print response.read()
+
+        #serverClient = AsyncHTTPClient()
+
+
         http_ioloop = tornado.ioloop.IOLoop.instance()
         application = tornado.web.Application([
             (r"/(.*)", HTTPBaseHandler)
@@ -536,6 +550,7 @@ def client_game_engine_player_exists(player_name):
         return False
     else:
         return True
+
 
 #Server - Game Engine
 #Requests
