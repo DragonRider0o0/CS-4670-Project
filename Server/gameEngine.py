@@ -30,135 +30,194 @@ def main(port=6500):
 
 
 class Database:
+    name = "GameEngine"
+    serverSessions = "ServerSessions"
+    gameSessions = "GameSessions"
+    players = "Players"
+    game = "Game"
+    gameUpdates = "GameUpdates"
+    gameInformation = "GameInformation"
+    chatMessages = "ChatMessages"
+    database = None
+    gameSessionNumber = 0
 
-        name = "GameEngine"
-        web_sockets = "WebSockets"
-        http_clients = "HTTPClients"
-        users = "Users"
-        game = "Game"
-        server_sessions = "ServerSessions"
-        sessions = "Sessions"
-        players = "Players"
-        messages = "Messages"
-        database = None
-        sessionNumber_count = 0
+    def __init__(self):
+        global mongoClient
+        from pymongo import MongoClient
+        mongoClient = MongoClient()
+        self.database = mongoClient[self.name]
 
-        def __init__(self):
-            global mongoClient
-            from pymongo import MongoClient
-            mongoClient = MongoClient()
-            self.database = mongoClient[self.name]
+    def add_server_session(self, server_session):
+        collection = self.database[self.serverSessions]
+        server_session_number = server_session['SessionNumber']
+        server_session_item = self.get_server_session(server_session_number)
+        if server_session_item is None:
+            pass
+        else:
+            self.remove_server_session(server_session_number)
+        document = {'Session': server_session, 'SessionNumber': server_session_number}
+        collection.insert(document)
 
-        def get_web_sockets(self):
-            collection = self.database[self.web_sockets]
-            documents = collection.find()
-            dbIndexes = []
-            for document in documents:
-                dbIndexes.append(document['WebSocket'])
-            return dbIndexes
+    def get_server_session(self, server_session_number):
+        collection = self.database[self.serverSessions]
+        document = collection.find_one({"SessionNumber": server_session_number})
+        if document is None:
+            return None
+        server_session = document['Session']
+        return server_session
 
-        def get_http_clients(self):
-            collection = self.database[self.http_clients]
-            documents = collection.find()
-            dbIndexes = []
-            for document in documents:
-                dbIndexes.append(document['HTTPClient'])
-            return dbIndexes
+    def remove_server_session(self, server_session_number):
+        collection = self.database[self.serverSessions]
+        document = collection.find_one({"SessionNumber": server_session_number})
+        if document is None:
+            return False
+        else:
+            collection.remove({'Session': server_session_number})
+            return True
 
-        def get_http_client(self, sessionNumber_number):
-            collection = self.database[self.http_clients]
-            document = collection.find_one({"SessionNumber": sessionNumber_number})
-            return document
+    def add_game_session(self, game_session):
+        collection = self.database[self.gameSessions]
+        game_session_number = game_session['SessionNumber']
+        game_session_item = self.get_game_session(game_session_number)
+        if game_session_item is None:
+            pass
+        else:
+            self.remove_game_session(game_session_number)
+        document = {'Session': game_session, 'SessionNumber': game_session_number}
+        collection.insert(document)
 
-        def get_server_session(self, sessionNumber_number):
-            collection = self.database[self.server_sessions]
-            document = collection.find_one({"SessionNumber": sessionNumber_number})
-            return document
+    def get_game_session(self, game_session_number):
+        collection = self.database[self.gameSessions]
+        document = collection.find_one({"SessionNumber": game_session_number})
+        if document is None:
+            return None
+        game_session = document['Session']
+        return game_session
 
-        def get_game(self):
-            collection = self.database[self.game]
-            document = collection.find_one()
-            return document
+    def remove_game_session(self, game_session_number):
+        collection = self.database[self.gameSessions]
+        document = collection.find_one({"SessionNumber": game_session_number})
+        if document is None:
+            return False
+        else:
+            collection.remove({'Session': game_session_number})
+            return True
 
-        def get_user(self, username):
-            collection = self.database[self.users]
-            document = collection.find_one({"Username": username})
-            return document
+    def add_player(self, player):
+        collection = self.database[self.players]
+        player_name = player['PlayerName']
+        player_item = self.get_player(player_name)
+        if player_item is None:
+            pass
+        else:
+            self.remove_player(player_name)
+        document = {'Player': player, 'PlayerName': player_name}
+        collection.insert(document)
 
-        def get_player(self, player_name):
-            collection = self.database[self.players]
-            document = collection.find_one({"PlayerName": player_name})
-            return document
+    def get_player(self, player_name):
+        collection = self.database[self.players]
+        document = collection.find_one({"PlayerName": player_name})
+        if document is None:
+            return None
+        player = document['Player']
+        return player
 
-        def get_session(self, sessionNumber_number):
-            collection = self.database[self.sessionNumbers]
-            document = collection.find_one({"SessionNumber": sessionNumber_number})
-            return document
+    def remove_player(self, player_name):
+        collection = self.database[self.users]
+        document = collection.find_one({"Player": player_name})
+        if document is None:
+            return False
+        else:
+            collection.remove({'Player': player_name})
+            return True
 
-        def get_message(self, sessionNumber_number):
-            collection = self.database[self.messages]
-            document = collection.find_one({"SessionNumber": sessionNumber_number})
-            message = document["Message"]
-            return message
+    def set_game(self, game):
+        collection = self.database[self.game]
+        collection.remove()
+        document = {'Game': game}
+        collection.insert(document)
 
-        def add_web_socket(self, web_socket):
-            document = {"WebSocket": web_socket}
-            collection = self.database[self.web_sockets]
-            collection.insert(document)
+    def get_game(self):
+        collection = self.database[self.game]
+        document = collection.find_one()
+        game = document['Game']
+        return game
 
-        def add_htttp_client(self, sessionNumber):
-            document = {"SessionNumber": sessionNumber}
-            collection = self.database[self.http_clients]
-            collection.insert(document)
+    def add_game_update(self, game_update, session_number):
+        game_update_item = self.get_game_update(session_number)
+        if game_update_item is None:
+            pass
+        else:
+            self.remove_game_update(session_number)
+        collection = self.database[self.gameUpdates]
+        document = {'GameUpdate': game_update, 'SessionNumber': session_number}
+        collection.insert(document)
 
-        def set_game(self, game):
-            collection = self.database[self.game]
-            collection.remove()
-            collection.insert(game)
+    def get_game_updates(self):
+        collection = self.database[self.gameUpdates]
+        documents = collection.find()
+        if documents is None:
+            return None
+        game_updates = []
+        for document in documents:
+            game_updates.append(document['GameUpdate'])
+        return game_updates
 
-        def add_user(self, user):
-            collection = self.database[self.users]
-            collection.insert(user)
+    def get_game_update(self, session_number):
+        collection = self.database[self.gameUpdates]
+        document = collection.find_one({"SessionNumber": session_number})
+        if document is None:
+            return None
+        game_update = document['GameUpdate']
+        return game_update
 
-        def add_player(self, player):
-            collection = self.database[self.players]
-            collection.insert(player)
+    def remove_game_update(self, session_number):
+        collection = self.database[self.gameUpdates]
+        document = collection.find_one({"SessionNumber": session_number})
+        if document is None:
+            return False
+        else:
+            collection.remove({'SessionNumber': session_number})
+            return True
 
-        def add_message(self, message, sessionNumber):
-            document = {'Message': message, 'SessionNumber': sessionNumber}
-            collection = self.database[self.messages]
-            collection.insert(document)
+    def set_game_information(self, game_information):
+        collection = self.database[self.game]
+        collection.remove()
+        document = {'GameInformation': game_information}
+        collection.insert(document)
 
-        def add_session(self, sessionNumber):
-            collection = self.database[self.sessionNumbers]
-            collection.insert(sessionNumber)
+    def get_game_information(self):
+        collection = self.database[self.game]
+        document = collection.find_one()
+        game_information = document['GameInformation']
+        return game_information
 
-        def add_server_session(self, sessionNumber, username):
-            document = {'SessionNumber': sessionNumber, 'Username': username}
-            collection = self.database[self.server_sessions]
-            collection.insert(document)
+    def add_chat_message(self, chat_message, game_session_number):
+        chat_message_item = self.get_chat_message(game_session_number)
+        if chat_message_item is None:
+            pass
+        else:
+            self.remove_chat_message(game_session_number)
+        collection = self.database[self.chatMessages]
+        document = {'ChatMessage': chat_message, 'SessionNumber': game_session_number}
+        collection.insert(document)
 
-        def remove_web_socket(self, web_socket):
-            collection = self.database[self.web_sockets]
-            collection.remove({'WebSocket': web_socket})
+    def get_chat_message(self, game_session_number):
+        collection = self.database[self.chatMessages]
+        document = collection.find_one({"SessionNumber": game_session_number})
+        if document is None:
+            return None
+        chat_message = document['ChatMessage']
+        return chat_message
 
-        def remove_http_client(self, http_client):
-            collection = self.database[self.http_clients]
-            collection.remove({'HTTPClient': http_client})
-
-        def remove_player(self, player_name):
-            collection = self.database[self.players]
-            collection.remove({'PlayerName': player_name})
-
-        def remove_session(self, sessionNumber_number):
-            collection = self.database[self.sessionNumbers]
-            document = collection.find_one({"SessionNumber": sessionNumber_number})
-            if document is None:
-                return False
-            else:
-                collection.remove({'SessionNumber': sessionNumber_number})
-                return True
-
+    def remove_chat_message(self, game_session_number):
+        collection = self.database[self.chatMessages]
+        document = collection.find_one({"SessionNumber": game_session_number})
+        if document is None:
+            return False
+        else:
+            collection.remove({'SessionNumber': game_session_number})
+            return True
 
 class GameEngine:
     def __init__(self, port):
