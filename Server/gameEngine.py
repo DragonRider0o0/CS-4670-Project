@@ -558,7 +558,7 @@ def client_game_engine_player_exists(player_name):
 #Requests
 def server_game_engine_game_inform_request(game_info):
     global source
-    request = {'Type': 'Game Inform', 'GameInfo': game_info, 'Source': source}
+    request = {'Type': 'Game Inform', 'GameInfo': game_info, 'Ip': '127.0.0.1', 'Port': 6500, 'Source': source}
     return request
 
 
