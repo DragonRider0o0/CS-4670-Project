@@ -13,7 +13,7 @@ import socket
 
 gameEngine = None
 database = None
-webSocketClients = {}
+webSocketClients = []
 mongoClient = None
 webSocketIndex = 0
 source = "Server"
@@ -33,6 +33,7 @@ def main(port=5500):
 class Database:
     name = "Server"
     gameEngines = "GameEngines"
+    httpClients = "HTTPClients"
     sessions = "Sessions"
     users = "Users"
     gameInformations = "GameInformations"
@@ -68,16 +69,44 @@ class Database:
             game_engines.append(document['GameEngine'])
         return game_engines
 
+    def add_http_client(self, http_client):
+        http_clients = self.get_http_clients()
+        for http_client_item in http_clients:
+            if http_client_item['Ip'] == http_client['Ip'] and http_client_item['Port'] == http_client['Port']:
+                return
+            else:
+                pass
+        collection = self.database[self.httpClients]
+        document = {'HTTPClient': http_client}
+        collection.insert(document)
+
+    def get_http_clients(self):
+        collection = self.database[self.httpClients]
+        documents = collection.find()
+        if documents is None:
+            return None
+        http_clients = []
+        for document in documents:
+            http_clients.append(document['HTTPClient'])
+        return http_clients
+
     def add_session(self, session):
         collection = self.database[self.sessions]
         session_number = session['SessionNumber']
         session_item = self.get_session(session_number)
         if session_item is None:
-            pass
+            self.serverSessionNumber += 1
+            session['SessionNumber'] = self.serverSessionNumber
+            document = {'Session': session, 'SessionNumber': self.serverSessionNumber}
+            collection.insert(document)
         else:
-            self.remove_session(session_number)
-        document = {'Session': session, 'SessionNumber': session_number}
-        collection.insert(document)
+            if session_item["Username"] == session["Username"]:
+                pass
+            else:
+                self.serverSessionNumber += 1
+                session['SessionNumber'] = self.serverSessionNumber
+                document = {'Session': session, 'SessionNumber': self.serverSessionNumber}
+                collection.insert(document)
 
     def get_session(self, session_number):
         collection = self.database[self.sessions]
@@ -280,8 +309,7 @@ class HTTPBaseHandler(tornado.web.RequestHandler):
 class WebSocketBaseHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         global webSocketClients
-        global webSocketIndex
-        webSocketClients[webSocketIndex] = self
+        webSocketClients.append(self)
 
     def on_message(self, request):
         data = json.loads(request)
@@ -292,10 +320,8 @@ class WebSocketBaseHandler(tornado.websocket.WebSocketHandler):
         global webSocketClients
         print "WebSocket Opened"
 
-        for index, webSocket in webSocketClients.items():
-            if webSocket == self:
-                del webSocketClients[index]
-                break
+        if self in webSocketClients:
+            webSocketClients.remove(self)
 
 
 #Server - Client
@@ -310,25 +336,41 @@ def client_server_chat_request(data):
 #Responses
 #Handle Session Request
 def client_server_session_request_handler(data):
-    client_server_authenticate_user(data["Username"], data["Password"])
+    username = data["Username"]
+    password = data["Password"]
+    client_server_authenticate_user(username, password)
     session = client_server_create_session(data)
     response = client_server_session_response(session)
     return response
 
 
 def client_server_create_session(data):
-    return data["SessionNumber"]
+    global database
+    session_number = data['SessionNumber']
+    username = data['Username']
+    session = database.get_session(session_number)
+    if session is None:
+        session = {'SessionNumber': session_number, 'Username': username}
+    else:
+        session['Username'] = username
+        database.remove_session(session_number)
+    database.add_session(session)
+    return database.get_session(session_number)
 
 
-def client_server_session_response(session):
-    if client_server_session_valid(session):
-        command = "Session Request"
-        message = "Authentication successful"
-        response = {'Type': 'Success', 'Session': session, 'Command': command, 'Message': message}
+def client_server_session_response(data):
+    global database
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
+        session = database.get_session(session_number)
+        session_number = session["SessionNumber"]
+        username = session["Username"]
+        response = {'Type': 'Server Session', 'SessionNumber': session_number, 'Username': username}
     else:
         command = "Session Request"
         message = "Authentication unsuccessful - invalid username or password"
-        response = {'Type': 'Fail', 'Session': session, 'Command': command, 'Message': message}
+        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -338,11 +380,8 @@ def client_server_session_response(session):
 def client_server_chat_handler(data):
     global webSocketClients
     message = client_server_chat_response(data)
-    global database
-    for dbIndex in database.get_web_sockets():
-        if dbIndex in webSocketClients:
-            webSocketClients[dbIndex].write_message(message)
-
+    for webSocketClient in webSocketClients:
+        webSocketClient.write_message(message)
     return client_server_chat_response(message)
 
 
@@ -359,14 +398,19 @@ def client_server_get_chat_handler(data):
 
 
 def client_server_get_chat_response(data):
+    global database
     session_number = data["SessionNumber"]
-    player_name = data["PlayerName"]
-    if client_server_session_valid(session_number, player_name):
-        response = database.get_message(session_number)
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
+        response = database.get_chat_message(session_number)
+        if response is None:
+            command = "Get Server Chat"
+            message = "No pending messages"
+            response = {'Type': 'Error', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     else:
         command = "Authentication Failure"
         message = "Authentication unsuccessful - invalid username or password"
-        response = {'Type': 'Fail', 'Session': session_number, 'Command': command, 'Message': message}
+        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -374,16 +418,19 @@ def client_server_get_chat_response(data):
 
 #Handle Game List Request
 def client_server_game_list_request_handler(data):
-    return client_server_game_list_response(data["SessionNumber"])
+    return client_server_game_list_response(data)
 
 
-def client_server_game_list_response(session):
-    if client_server_session_valid(session):
-        response = client_server_get_game_list()
+def client_server_game_list_response(data):
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
+        game_list = client_server_get_game_list()
+        response = {'Type': 'Game List', 'SessionNumber': session_number, 'Username': username, 'Games': game_list}
     else:
         command = "Game List Response"
         message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'Session': session, 'Command': command, 'Message': message}
+        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -391,33 +438,35 @@ def client_server_game_list_response(session):
 
 def client_server_get_game_list():
     global database
-    games = database.get_games()
+    games = database.get_game_informations()
     return games
 
 
 #Handle Terminate Session
 def client_server_terminate_session_request_handler(data):
-    return client_server_terminate_response(data["SessionNumber"])
+    return client_server_terminate_response(data)
 
 
-def client_server_terminate_response(session):
-    if client_server_session_valid(session):
-        if client_server_terminate_session(session):
+def client_server_terminate_response(data):
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
+        if client_server_terminate_session(session_number):
             command = "Session Terminate"
             message = "Termination successful"
-            response = {'Type': 'Success', 'Session': session, 'Command': command, 'Message': message}
+            response = {'Type': 'Success', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
         else:
-            response = client_server_error_response(session)
+            response = client_server_error_response(data)
     else:
         command = "Session Terminate"
         message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'Session': session, 'Command': command, 'Message': message}
+        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
 
 
-def client_server_terminate_session(session):
+def client_server_terminate_session(session_number):
     return True
 
 
@@ -427,7 +476,9 @@ def client_server_success_request_handler(data):
 
 
 def client_server_success_response(data):
-    if client_server_session_valid(data["SessionNumber"]):
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
         #print "Session: " + str(data["SessionNumber"])
         #print "Player: " + str(data["PlayerName"])
         #print "Request:" + str(data["Command"])
@@ -436,7 +487,7 @@ def client_server_success_response(data):
     else:
         command = "Success"
         message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'Session': data["SessionNumber"], 'Command': command, 'Message': message}
+        response = {'Type': 'Fail', 'SessionNumber': data["SessionNumber"], 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -448,7 +499,9 @@ def client_server_fail_request_handler(data):
 
 
 def client_server_fail_response(data):
-    if client_server_session_valid(data["SessionNumber"]):
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
         #print "Session: " + str(data["SessionNumber"])
         #print "Player: " + str(data["PlayerName"])
         #print "Request:" + str(data["Command"])
@@ -457,7 +510,7 @@ def client_server_fail_response(data):
     else:
         command = "Fail"
         message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'Session': data["SessionNumber"], 'Command': command, 'Message': message}
+        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -482,8 +535,7 @@ def client_server_authenticate_user(username, password):
     global database
     user = database.get_user(username)
     if user is None:
-        user['Username'] = username
-        user['Password'] = password
+        user = {'Username': username, 'Password': password}
         database.add_user(user)
     if user['Password'] is password:
         return True
@@ -491,12 +543,16 @@ def client_server_authenticate_user(username, password):
         return False
 
 
-def client_server_session_valid(session):
+def client_server_session_valid(session_number, username):
     global database
-    if database.get_session(session) is None:
+    session = database.get_session(session_number)
+    if session is None:
         return False
     else:
-        return True
+        if session["Username"] == username:
+            return True
+        else:
+            return False
 
 
 #Server - Game Engine

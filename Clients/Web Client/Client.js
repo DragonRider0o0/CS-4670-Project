@@ -1,32 +1,30 @@
 var Client = {
     serverWebSocket: null,
-    serverURI: "",
+    serverURI: {ip: "", port: ""},
+
+    gameEngineWebSocket: null,
+    gameEngineURI: {ip: "", port: ""},
+
     sessionNumber: 0,
-    player: {
-        Name: ""
-    },
+    player: {},
+    playerName: "",
     username: "",
     password: "",
     status: "",
-    platform: "",
-    features: {},
+    source: "Client",
     gameList: null,
     game: null,
 
-    Setup: function (platform, features) {
-        this.platform = platform;
-        this.features = features;
-    },
-    Account: function (username, password) {
+    Setup: function (username, password) {
         this.username = username;
         this.password = password
     },
     WebsocketRequestHandler: function (evt) {
         Client.ProcessMessage(evt.data)
     },
-    WebsocketConnect: function (serverHost, serverPort) {
-        this.uri = "ws://" + serverHost + ":" + serverPort + "/ws";
-        this.serverWebSocket = new WebSocket(this.uri);
+    ServerWebsocketConnect: function (serverHost, serverPort) {
+        var uri = "ws://" + serverHost + ":" + serverPort + "/ws";
+        this.serverWebSocket = new WebSocket(uri);
         this.serverWebSocket.onmessage = this.WebsocketRequestHandler;
 
         this.serverWebSocket.onclose = this.WebsocketOnDisconnect;
@@ -34,10 +32,21 @@ var Client = {
         this.serverWebSocket.onopen = this.WebsocketOnConnect;
 
     },
+    GameEngineWebsocketConnect: function (gameEngineHost, gameEnginePort) {
+        var uri = "ws://" + gameEngineHost + ":" + gameEnginePort + "/ws";
+        this.gameEngineWebSocket = new WebSocket(uri);
+        this.gameEngineWebSocket.onmessage = this.WebsocketRequestHandler;
+
+        this.gameEngineWebSocket.onclose = this.WebsocketOnDisconnect;
+
+        this.gameEngineWebSocket.onopen = this.WebsocketOnConnect;
+
+    },
+
     WebsocketOnConnect: function (evt) {
-        var message;
-        message = ServerClient.ServerChatRequest(Client.sessionNumber, Client.username, ("User: " + Client.username + " connected"), Client.status);
-        Client.serverWebSocket.send(message);
+        //var message;
+        //message = ServerClient.ServerChatRequest(Client.sessionNumber, Client.username, ("User: " + Client.username + " connected"), Client.status);
+        //Client.serverWebSocket.send(message);
     },
     WebsocketOnDisconnect: function (evt) {
     },
@@ -46,7 +55,7 @@ var Client = {
         this.serverWebSocket.send(data);
     },
     ProcessMessage: function (message) {
-		alert(message);
+		//alert(message);
         var response = JSON.parse(message)
         if (response.Source == "Server") {
             if (response.Type == "Server Session") {
@@ -91,69 +100,87 @@ var Client = {
     }
 }
 var ServerClient = {
-    Source: "Client",
-    ServerSessionRequest: function (sessionNumber, username, password) {
+    ServerSessionRequest: function () {
         var serverSessionRequest = {
             Type: "Server Session Request",
-            SessionNumber: sessionNumber,
-            Username: username,
-            Password: password,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            Username: Client.username,
+            Password: Client.password,
+            Source: Client.source
         };
         return JSON.stringify(serverSessionRequest);
     },
-    ServerChatRequest: function (sessionNumber, username, message, status) {
+    ServerChatRequest: function (message, status) {
         var serverChatRequest = {
             Type: "Server Chat",
-            SessionNumber: sessionNumber,
-            Username: username,
+            SessionNumber: Client.sessionNumber,
+            Username: Client.username,
             Message: message,
             Status: status,
-            Source: this.Source
+            Source: Client.source
         };
         return JSON.stringify(serverChatRequest);
     },
-    ServerGetChatRequest: function (sessionNumber, username) {
+    ServerGetChatRequest: function () {
         var serverGetChatRequest = {
             Type: "Get Server Chat",
-            SessionNumber: sessionNumber,
-            Username: username,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            Username: Client.username,
+            Source: Client.source
         };
         return JSON.stringify(serverGetChatRequest);
     },
-    ServerGetGameList: function (sessionNumber, username) {
+    ServerGetGameList: function () {
         var serverGetGameListRequest = {
             Type: "Get Game List",
-            SessionNumber: sessionNumber,
-            Username: username,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            Username: Client.username,
+            Source: Client.source
         };
         return JSON.stringify(serverGetGameListRequest);
     },
-    ServerTerminateSessionRequest: function (sessionNumber, username) {
+    ServerTerminateSessionRequest: function () {
         var serverTerminateSessionRequest = {
             Type: "Terminate Session",
-            SessionNumber: sessionNumber,
-            Username: username,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            Username: Client.username,
+            Source: Client.source
         };
         return JSON.stringify(serverTerminateSessionRequest);
     },
 
-    ServerSessionHandler: function (SessionData) {
-        Client.sessionNumber = SessionData.SessionNumber;
+    ServerSessionHandler: function (response) {
+        Client.sessionNumber = response.SessionNumber;
     },
-    ServerChatHandler: function (chatData) {
+    ServerChatHandler: function (response) {
+        var username = response.Username;
+        var message = response.Message;
+        var status = response.Status;
+        var chatText = "(" + status + ") " + username + ": " + message + "\n";
+        alert(chatText);
     },
-    ServerGameListHandler: function (gameListData) {
-        Client.gameList = gameListData.Games;
+    ServerGameListHandler: function (response) {
+        Client.gameList = response.Games;
+        alert(JSON.stringify(Client.gameList));
+
     },
-    ServerSuccessHandler: function (successData) {
+    ServerSuccessHandler: function (response) {
+        var message = response.Message;
+        var command = response.Command;
+        var successText = "Success: " + command + "\n" + message + "\n";
+        alert(successText);
     },
-    ServerFailHandler: function (failData) {
+    ServerFailHandler: function (response) {
+        var message = response.Message;
+        var command = response.Command;
+        var failText = "Fail: " + command + "\n" + message + "\n";
+        alert(failText);
     },
-    ServerErrorHandler: function (errorData) {
+    ServerErrorHandler: function (response) {
+        var message = response.Message;
+        var command = response.Command;
+        var errorText = "Error: " + command + "\n" + message + "\n";
+        alert(errorText);
     }
 };
 var GameEngineClient = {
@@ -231,3 +258,54 @@ var GameEngineClient = {
     GameErrorHandler: function (errorData) {
     }
 };
+
+var Test =
+{
+    Run: function()
+    {
+        Test.Setup();
+        setTimeout(this.RunTests, 1000)
+    },
+    RunTests: function()
+    {
+        //Test.TestSessionRequest();
+        //Test.TestServerChat();
+        //Test.TestGetServerChat();
+        Test.TestGetGames();
+    },
+
+    Setup: function()
+    {
+        Client.Setup("user", "password");
+
+        Client.serverURI.ip = "127.0.0.1";
+        Client.serverURI.port= "5500";
+        Client.ServerWebsocketConnect("localhost", "5500");
+
+        Client.gameEngineURI.ip = "127.0.0.1";
+        Client.gameEngineURI.port= "6500";
+        //Client.GameEngineWebsocketConnect("localhost", "5500");
+    },
+    TestSessionRequest: function()
+    {
+        var response = ServerClient.ServerSessionRequest();
+        Client.serverWebSocket.send(response);
+    },
+    TestServerChat: function()
+    {
+        var response = ServerClient.ServerChatRequest("Test Message", "Testing");
+        Client.serverWebSocket.send(response);
+    },
+    TestGetServerChat: function()
+    {
+        var response = ServerClient.ServerGetChatRequest();
+        Client.serverWebSocket.send(response);
+    },
+    TestGetGames: function()
+    {
+        var response = ServerClient.ServerGetGameList();
+        Client.serverWebSocket.send(response);
+    }
+
+
+}

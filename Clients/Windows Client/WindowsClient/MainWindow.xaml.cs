@@ -30,18 +30,17 @@ namespace WindowsClient
         public MainWindow()
         {
             InitializeComponent();
-            Client.Setup("Platform",new JObject());
-            Client.Account("username", "password");
+            Test.Run();
 
-            string serverAddressString = "http:\\\\localhost";
-            UriBuilder serverURI = new UriBuilder(serverAddressString);
-            serverURI.Port = 5500;
-            Client.HTTPServerConnect(serverURI.Uri);
+            //string serverAddressString = "http:\\\\localhost";
+            //UriBuilder serverURI = new UriBuilder(serverAddressString);
+            //serverURI.Port = 5500;
+            //Client.HTTPServerConnect(serverURI.Uri);
 
-            string gameEngineAddressString = "http:\\\\localhost";
-            UriBuilder gameEngineURI = new UriBuilder(serverAddressString);
-            gameEngineURI.Port = 6500;
-            //Client.HTTPGameEngineConnect(gameEngineURI.Uri);
+            //string gameEngineAddressString = "http:\\\\localhost";
+            //UriBuilder gameEngineURI = new UriBuilder(serverAddressString);
+            //gameEngineURI.Port = 6500;
+            ////Client.HTTPGameEngineConnect(gameEngineURI.Uri);
         }
 
         private void testServer()

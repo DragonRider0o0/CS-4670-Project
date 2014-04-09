@@ -13,11 +13,9 @@
 	<script src="Client.js"></script>
       <script>
         $(document).ready(function () {
-            Client.Setup("Platform", {})
-            Client.Account("username", "password")
-            Client.WebsocketConnect("localhost", "5500")
+            Test.Run();
 
-            setTimeout(function(){Client.WebSocketSend(ServerClient.ServerSessionRequest(Client.session, Client.username, Client.password));}, 1000);
+            //setTimeout(function(){Client.WebSocketSend(ServerClient.ServerSessionRequest(Client.session, Client.username, Client.password));}, 1000);
 
       });
     </script>

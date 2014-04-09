@@ -31,6 +31,7 @@ def main(port=6500):
 
 class Database:
     name = "GameEngine"
+    httpClients = "HTTPClients"
     serverSessions = "ServerSessions"
     gameSessions = "GameSessions"
     players = "Players"
@@ -39,7 +40,7 @@ class Database:
     gameInformation = "GameInformation"
     chatMessages = "ChatMessages"
     database = None
-    gameSessionNumber = 0
+    game_session_count = 0
 
     def __init__(self):
         global mongoClient
@@ -47,16 +48,38 @@ class Database:
         mongoClient = MongoClient()
         self.database = mongoClient[self.name]
 
+    def add_http_client(self, http_client):
+        http_clients = self.get_http_clients()
+        for http_client_item in http_clients:
+            if http_client_item['Ip'] == http_client['Ip'] and http_client_item['Port'] == http_client['Port']:
+                return
+            else:
+                pass
+        collection = self.database[self.httpClients]
+        document = {'HTTPClient': http_client}
+        collection.insert(document)
+
+    def get_http_clients(self):
+        collection = self.database[self.httpClients]
+        documents = collection.find()
+        if documents is None:
+            return None
+        http_clients = []
+        for document in documents:
+            http_clients.append(document['HTTPClient'])
+        return http_clients
+
     def add_server_session(self, server_session):
         collection = self.database[self.serverSessions]
-        server_session_number = server_session['SessionNumber']
-        server_session_item = self.get_server_session(server_session_number)
+        session_number = server_session['SessionNumber']
+        server_session_item = self.get_server_session(session_number)
         if server_session_item is None:
-            pass
+            document = {'Session': server_session, 'SessionNumber': session_number}
+            collection.insert(document)
         else:
-            self.remove_server_session(server_session_number)
-        document = {'Session': server_session, 'SessionNumber': server_session_number}
-        collection.insert(document)
+            database.remove_session(session_number)
+            document = {'Session': server_session, 'SessionNumber': session_number}
+            collection.insert(document)
 
     def get_server_session(self, server_session_number):
         collection = self.database[self.serverSessions]
@@ -80,11 +103,18 @@ class Database:
         game_session_number = game_session['SessionNumber']
         game_session_item = self.get_game_session(game_session_number)
         if game_session_item is None:
-            pass
+            self.game_session_count += 1
+            game_session['SessionNumber'] = self.game_session_count
+            document = {'Session': game_session, 'SessionNumber': self.game_session_count}
+            collection.insert(document)
         else:
-            self.remove_game_session(game_session_number)
-        document = {'Session': game_session, 'SessionNumber': game_session_number}
-        collection.insert(document)
+            if game_session_item["PlayerName"] == game_session["PlayerName"]:
+                pass
+            else:
+                self.game_session_count += 1
+                game_session['SessionNumber'] = self.game_session_count
+                document = {'Session': game_session, 'SessionNumber': self.game_session_count}
+                collection.insert(document)
 
     def get_game_session(self, game_session_number):
         collection = self.database[self.gameSessions]
@@ -218,6 +248,7 @@ class Database:
         else:
             collection.remove({'SessionNumber': game_session_number})
             return True
+
 
 class GameEngine:
     def __init__(self, port):
@@ -391,21 +422,11 @@ def client_game_engine_session_response(data):
 
 def client_game_engine_create_game_session(data):
     global database
-    global sessionNumber_count
-    sessionNumber = data["SessionNumber"]
+    session_number = data["SessionNumber"]
     if database.get_session is None:
-        sessionNumber = sessionNumber_count
-        sessionNumber_count += 1
-        database.add_session(sessionNumber)
-    return sessionNumber
-
-
-def client_game_engine_associate_player_and_session(player_name, server_session):
-    global database
-    player = database.get_player(player_name)
-    player['Server Session'] = server_session
-    database.remove_player(player_name)
-    database.add_player(player)
+        session_number = database.game_session_count
+        database.add_game_session(database.game_session_count)
+    return session_number
 
 
 def client_game_engine_create_player(player_name):
@@ -422,8 +443,8 @@ def client_game_engine_chat_handler(data):
         webSocketClient.write_message(response)
     httpClients = database.get_http_clients()
     for httpClient in httpClients:
-        sessionNumber = httpClient['SessionNumber']
-        database.add_message(response, sessionNumber)
+        session_number = httpClient['SessionNumber']
+        database.add_message(response, session_number)
     return response
 
 
@@ -596,10 +617,18 @@ def client_game_engine_authenticate_server_session(username, server_session, pla
         return False
 
 
-def client_game_engine_server_session_valid(sessionNumber, username):
+def client_game_engine_server_session_valid(session_number, username):
     global database
-    server_session = database.get_server_session(sessionNumber)
+    server_session = database.get_server_session(session_number)
     if username == server_session['Username']:
+        return True
+    else:
+        return False
+
+def client_game_engine_game_session_valid(session_number, player_name):
+    global database
+    game_session = database.get_server_session(session_number)
+    if player_name == game_session['PlayerName']:
         return True
     else:
         return False
@@ -611,6 +640,15 @@ def client_game_engine_player_exists(player_name):
         return False
     else:
         return True
+
+
+def client_game_engine_associate_player_and_session(player_name, server_session):
+    global database
+    player = database.get_player(player_name)
+    player['Server Session'] = server_session
+    database.remove_player(player_name)
+    database.add_player(player)
+
 
 
 #Server - Game Engine

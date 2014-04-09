@@ -5,27 +5,27 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using Newtonsoft.Json.Linq;
 
 namespace WindowsClient
 {
     internal static class Client
     {
-        private static Uri HTTPServerURI;
+        internal static Uri HTTPServerURI;
         internal static HttpClient HTTPServerClient;
 
-        private static Uri HTTPGameEngineURI;
+        internal static Uri HTTPGameEngineURI;
         internal static HttpClient HTTPGameEngineClient;
 
         internal static int SessionNumber;
         internal static JObject Player;
         internal static string PlayerName;
-        private static string Username;
-        private static string Password;
-        private static string Status;
-        private static string Platform;
-        private static JObject Features;
-        internal static JObject GameList;
+        internal static string Username;
+        internal static string Password;
+        internal static string Status;
+        internal static string Source = "Client";
+        internal static JArray GameList;
         internal static JObject Game;
 
         static Client()
@@ -33,16 +33,9 @@ namespace WindowsClient
             Password = "";
             Username = "";
             Status = "";
-            Platform = "Windows";
         }
 
-        internal static void Setup(string platform, JObject features)
-        {
-            Platform = platform;
-            Features = features;
-        }
-
-        internal static void Account(string username, string password)
+        internal static void SetAccountInformation(string username, string password)
         {
             Username = username;
             Password = password;
@@ -57,9 +50,8 @@ namespace WindowsClient
 
         private static void HTTPServerOnConnect()
         {
-            JObject messsage = ServerClient.ServerChatRequest(Client.SessionNumber, Client.Username,
-                ("User: " + Client.Username + " connected"), Client.Status);
-            HTTPServerSend(messsage);
+            //JObject messsage = ServerClient.ServerChatRequest(("User: " + Client.Username + " connected"), Client.Status);
+            //HTTPServerSend(messsage);
         }
 
         internal static async void HTTPServerSend(JObject data)
@@ -162,35 +154,41 @@ namespace WindowsClient
 
     internal static class ServerClient
     {
-        private const string Source = "Client";
-
-        internal static JObject ServerSessionRequest(int sessionNumber, string username, string password)
+        internal static JObject ServerSessionRequest()
         {
-            string serverSessionRequest = "{'Type': 'Server Session Request', 'SessionNumber': " + sessionNumber + ", 'Username': " + username + ", 'Password': " + password + ", 'Source': '" + Source + "' }";
-            return JObject.Parse(serverSessionRequest);
+            string serverSessionRequest = "{'Type': 'Server Session Request', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Password': '" + Client.Password + "', 'Source': '" + Client.Source + "' }";
+            JObject response = JObject.Parse(serverSessionRequest);
+            return response;
         }
 
-        internal static JObject ServerChatRequest(int sessionNumber, string username, string message, string status)
+        internal static JObject ServerChatRequest(string message)
         {
-            string serverChatRequest = "{'Type': 'Server Chat', 'SessionNumber': " + sessionNumber + ", 'Username': '" + username + "', 'Message': '" + message + "', 'Status': '" + status + "', 'Source': '" + Source + "' }";
+            string serverChatRequest = "{'Type': 'Server Chat', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Message': '" + message + "', 'Status': '" + Client.Status + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(serverChatRequest);
         }
 
-        internal static JObject ServerGetChatRequest(int sessionNumber, string username)
+        internal static JObject ServerChatRequest(string message, string status)
         {
-            string serverChatRequest = "{'Type': 'Get Server Chat', 'SessionNumber': " + sessionNumber + ", 'Username': '" + username + "', 'Source': '" + Source + "' }";
+            Client.Status = status;
+            string serverChatRequest = "{'Type': 'Server Chat', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Message': '" + message + "', 'Status': '" + Client.Status + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(serverChatRequest);
         }
 
-        internal static JObject ServerGetGameListRequest(int sessionNumber, string username)
+        internal static JObject ServerGetChatRequest()
         {
-            string serverGameListRequest = "{'Type': 'Get Game List', 'SessionNumber': " + sessionNumber + ", 'Username': '" + username + ", 'Source': '" + Source + "' }";
+            string serverChatRequest = "{'Type': 'Get Server Chat', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Source': '" + Client.Source + "' }";
+            return JObject.Parse(serverChatRequest);
+        }
+
+        internal static JObject ServerGetGameListRequest()
+        {
+            string serverGameListRequest = "{'Type': 'Get Game List', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(serverGameListRequest);
         }
 
-        internal static JObject ServerTerminateSessionRequest(int sessionNumber, string username)
+        internal static JObject ServerTerminateSessionRequest()
         {
-            string serverTerminateSessionRequest = "{'Type': 'Terminate Session', 'SessionNumber': " + sessionNumber + ", 'Username': '" + username + ", 'Source': '" + Source + "' }";
+            string serverTerminateSessionRequest = "{'Type': 'Terminate Session', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + ", 'Source': '" + Client.Source + "' }";
             return JObject.Parse(serverTerminateSessionRequest);
         }
 
@@ -198,32 +196,50 @@ namespace WindowsClient
 
         internal static void ServerSessionHandler(JObject response)
         {
-            Client.SessionNumber = response["Session"].Value<int>();
+            Client.SessionNumber = response["SessionNumber"].Value<int>();
         }
 
         internal static void ServerChatHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string username = response["Username"].Value<string>();
+            string message = response["Message"].Value<string>();
+            string status = response["Status"].Value<string>();
+            string chatText = "(" + status + ") " + username + ": " + message + "\n";
+
+            MessageBox.Show(chatText);
         }
 
         internal static void ServerGameListHandler(JObject response)
         {
-            Client.GameList = response["Games"].Value<JObject>();
+            Client.GameList = response["Games"].Value<JArray>();
+            MessageBox.Show(Client.GameList.ToString());
         }
 
         internal static void ServerSuccessHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string message = response["Message"].Value<string>();
+            string command = response["Command"].Value<string>();
+
+            string successText = "Success: " + command + "\n" + message + "\n";
+            MessageBox.Show(successText);
         }
 
         internal static void ServerFailHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string message = response["Message"].Value<string>();
+            string command = response["Command"].Value<string>();
+
+            string failText = "Fail: " + command + "\n" + message + "\n";
+            MessageBox.Show(failText);
         }
 
         internal static void ServerErrorHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string message = response["Message"].Value<string>();
+            string command = response["Command"].Value<string>();
+
+            string errorText = "Error: " + command + "\n" + message + "\n";
+            MessageBox.Show(errorText);
         }
     }
 
@@ -292,6 +308,55 @@ namespace WindowsClient
         internal static void GameErrorHandler(JObject response)
         {
             throw new NotImplementedException();
+        }
+    }
+
+    internal static class Test
+    {
+        internal static void Run()
+        {
+            Setup();
+            //TestSessionRequest();
+            //TestServerChat();
+            //TestGetServerChat();
+            TestGetGames();
+        }
+
+        private static void TestSessionRequest()
+        {
+            JObject response = ServerClient.ServerSessionRequest();
+            Client.HTTPServerSend(response);
+        }
+
+        private static void TestServerChat()
+        {
+            JObject response = ServerClient.ServerChatRequest("Test Message", "Testing");
+            Client.HTTPServerSend(response);
+        }
+
+        private static void TestGetServerChat()
+        {
+            JObject response = ServerClient.ServerGetChatRequest();
+            Client.HTTPServerSend(response);
+        }
+
+        private static void TestGetGames()
+        {
+            JObject response = ServerClient.ServerGetGameListRequest();
+            Client.HTTPServerSend(response);
+        }
+
+        private static void Setup()
+        {
+            Client.SetAccountInformation("user", "password");
+
+            UriBuilder testServer = new UriBuilder("http:\\\\localhost");
+            testServer.Port = 5500;
+            UriBuilder testGameEngine = new UriBuilder("http:\\\\localhost");
+            testGameEngine.Port = 6500;
+
+            Client.HTTPServerConnect(testServer.Uri);
+            //Client.HTTPGameEngineConnect(testGameEngine.Uri);
         }
     }
 }
