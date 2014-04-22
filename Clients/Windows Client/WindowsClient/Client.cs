@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using Newtonsoft.Json.Linq;
 
@@ -32,18 +33,20 @@ namespace WindowsClient
         {
             Password = "";
             Username = "";
+            PlayerName = "";
             Status = "";
         }
 
-        internal static void SetAccountInformation(string username, string password)
+        internal static void SetAccountInformation(string username, string password, string playerName)
         {
             Username = username;
             Password = password;
+            PlayerName = playerName;
         }
 
-        internal static void HTTPServerConnect(Uri httpServerURI)
+        internal static void HTTPServerConnect(Uri httpServerUri)
         {
-            HTTPServerURI = httpServerURI;
+            HTTPServerURI = httpServerUri;
             HTTPServerClient = new HttpClient();
             HTTPServerOnConnect();
         }
@@ -62,21 +65,20 @@ namespace WindowsClient
             HTTPRequestHandler(responseMessage.Content.ReadAsStringAsync());
         }
 
-        internal static void HTTPGameEngineConnect(Uri httpServerURI)
+        internal static void HTTPGameEngineConnect(Uri httpGameEngineUri)
         {
-            HTTPServerURI = httpServerURI;
-            HTTPServerClient = new HttpClient();
+            HTTPGameEngineURI = httpGameEngineUri;
+            HTTPGameEngineClient = new HttpClient();
             HTTPGameEngineOnConnect();
         }
 
         private static void HTTPGameEngineOnConnect()
         {
-            JObject messsage = GameEngineClient.GameChatRequest(Client.SessionNumber, Client.PlayerName,
-                ("Player: " + Client.PlayerName + " connected"), Client.Status);
-            HTTPGameEngineSend(messsage);
+            //JObject messsage = GameEngineClient.GameChatRequest(("Player: " + Client.PlayerName + " connected"));
+            //HTTPGameEngineSend(messsage);
         }
 
-        private static async void HTTPGameEngineSend(JObject data)
+        internal static async void HTTPGameEngineSend(JObject data)
         {
             StringContent requestContent = new StringContent(data.ToString());
             Task<HttpResponseMessage> responseTask = HTTPGameEngineClient.PostAsync(HTTPGameEngineURI, requestContent);
@@ -188,7 +190,7 @@ namespace WindowsClient
 
         internal static JObject ServerTerminateSessionRequest()
         {
-            string serverTerminateSessionRequest = "{'Type': 'Terminate Session', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + ", 'Source': '" + Client.Source + "' }";
+            string serverTerminateSessionRequest = "{'Type': 'Terminate Session', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(serverTerminateSessionRequest);
         }
 
@@ -247,37 +249,48 @@ namespace WindowsClient
     {
         private const string Source = "Client";
 
-        internal static JObject GameSessionRequest(int sessionNumber, string username, string password)
+        internal static JObject GameSessionRequest()
         {
-            string gameSessionRequest = "{'Type': 'Game Session Request', 'SessionNumber': " + sessionNumber + ", 'Username': " + username + ", 'Source': '" + Source + "' }";
+            string gameSessionRequest = "{'Type': 'Game Session Request', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'PlayerName': '" + Client.PlayerName + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(gameSessionRequest);
         }
 
-        internal static JObject GameChatRequest(int sessionNumber, string playerName, string message, string status)
+        internal static JObject GameChatRequest(string message)
         {
-            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + sessionNumber + ", 'PlayerName': '" + playerName + "', 'Message': '" + message + "', 'Status': " + status + ", 'Source': '" + Source + "' }";
+            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Message': '" + message + "', 'Status': " + Client.Status + ", 'Source': '" + Client.Source + "' }";
             return JObject.Parse(gameChatRequest);
         }
 
-        internal static JObject GetGameUpdateRequest(int sessionNumber, string playerName)
+        internal static JObject GameChatRequest(string message, string status)
         {
-            string gameUpdateRequest = "{'Type': 'Get Game Update', 'SessionNumber': " + sessionNumber + ", 'PlayerName': '" + playerName + "', 'Source': '" + Source + "' }";
+            Client.Status = status;
+            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Message': '" + message + "', 'Status': " + Client.Status + ", 'Source': '" + Client.Source + "' }";
+            return JObject.Parse(gameChatRequest);
+        }
+
+        internal static JObject GameGetChatRequest()
+        {
+            string serverChatRequest = "{'Type': 'Get Server Chat', 'SessionNumber': " + Client.SessionNumber + ", 'Username': '" + Client.Username + "', 'Source': '" + Client.Source + "' }";
+            return JObject.Parse(serverChatRequest);
+        }
+
+        internal static JObject GetGameUpdateRequest()
+        {
+            string gameUpdateRequest = "{'Type': 'Get Game Update', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(gameUpdateRequest);
         }
 
-        internal static JObject GameCommandRequest(int sessionNumber, string playerName, JObject command)
+        internal static JObject GameCommandRequest(JObject command)
         {
-            string gameCommandRequest = "{'Type': 'Game Command', 'SessionNumber': " + sessionNumber + ", 'PlayerName': '" + playerName + "',  'Command': '" + command + "', 'Source': '" + Source + "' }";
+            string gameCommandRequest = "{'Type': 'Game Command', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "',  'Command': '" + command + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(gameCommandRequest);
         }
 
-        internal static JObject GameTerminateRequest(int sessionNumber, string playerName)
+        internal static JObject GameTerminateRequest()
         {
-            string gameTerminateRequest = "{'Type': 'Terminate Game', 'SessionNumber': " + sessionNumber + ", 'PlayerName': '" + playerName + "',  'Source': '" + Source + "' }";
+            string gameTerminateRequest = "{'Type': 'Terminate Game', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "',  'Source': '" + Source + "' }";
             return JObject.Parse(gameTerminateRequest);
         }
-
-
 
 
         internal static void GameSessionHandler(JObject response)
@@ -287,7 +300,12 @@ namespace WindowsClient
 
         internal static void GameChatHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string playerName = response["PlayerName"].Value<string>();
+            string message = response["Message"].Value<string>();
+            string status = response["Status"].Value<string>();
+            string chatText = "(" + status + ") " + playerName + ": " + message + "\n";
+
+            MessageBox.Show(chatText);
         }
 
         internal static void GameUpdateHandler(JObject response)
@@ -297,32 +315,69 @@ namespace WindowsClient
 
         internal static void GameSuccessHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string message = response["Message"].Value<string>();
+            string command = response["Command"].Value<string>();
+
+            string successText = "Success: " + command + "\n" + message + "\n";
+            MessageBox.Show(successText);
         }
 
         internal static void GameFailHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string message = response["Message"].Value<string>();
+            string command = response["Command"].Value<string>();
+
+            string failText = "Fail: " + command + "\n" + message + "\n";
+            MessageBox.Show(failText);
         }
 
         internal static void GameErrorHandler(JObject response)
         {
-            throw new NotImplementedException();
+            string message = response["Message"].Value<string>();
+            string command = response["Command"].Value<string>();
+
+            string errorText = "Error: " + command + "\n" + message + "\n";
+            MessageBox.Show(errorText);
         }
     }
 
     internal static class Test
     {
+        private static Timer serverTestTimer;
+        private static Timer gameEngineTestTimer;
+
         internal static void Run()
         {
             Setup();
-            //TestSessionRequest();
-            //TestServerChat();
-            //TestGetServerChat();
-            TestGetGames();
+            BeginServerTests();
+            BeginGameEngineTests();
         }
 
-        private static void TestSessionRequest()
+        private static void BeginServerTests()
+        {
+            TestServerSessionRequest();
+            serverTestTimer = new System.Timers.Timer(1000);
+            serverTestTimer.Elapsed += new ElapsedEventHandler(delegate(object sender, ElapsedEventArgs e)
+            {
+                if (Client.SessionNumber > 0)
+                {
+                    RunServerTests(); 
+                }
+                
+            });
+            serverTestTimer.Enabled = true;
+        }
+
+        private static void RunServerTests()
+        {
+            serverTestTimer.Stop();
+            TestServerChat();
+            TestGetServerChat();
+            TestGetGames();
+            TestTerminateServer();
+        }
+
+        private static void TestServerSessionRequest()
         {
             JObject response = ServerClient.ServerSessionRequest();
             Client.HTTPServerSend(response);
@@ -346,9 +401,78 @@ namespace WindowsClient
             Client.HTTPServerSend(response);
         }
 
+        private static void TestTerminateServer()
+        {
+            JObject response = ServerClient.ServerTerminateSessionRequest();
+            Client.HTTPServerSend(response);
+        }
+
+        private static void BeginGameEngineTests()
+        {
+            TestGameSessionRequest();
+            gameEngineTestTimer = new System.Timers.Timer(5000);
+            gameEngineTestTimer.Elapsed += new ElapsedEventHandler(delegate(object sender, ElapsedEventArgs e)
+            {
+                if (Client.SessionNumber > 0)
+                {
+                    RunGameEngineTests();
+                }
+
+            });
+            gameEngineTestTimer.Enabled = true;
+        }
+
+        private static void RunGameEngineTests()
+        {
+            gameEngineTestTimer.Stop();
+
+            TestGameEngineChat();
+            TestGetGameEngineChat();
+            TestGetGameUpdate();
+            TestGameCommand();
+            TestTerminateGame();
+        }
+
+        private static void TestGameSessionRequest()
+        {
+            JObject response = GameEngineClient.GameSessionRequest();
+            Client.HTTPGameEngineSend(response);
+        }
+
+        private static void TestGameEngineChat()
+        {
+            JObject response = GameEngineClient.GameChatRequest("Test Message", "Testing");
+            Client.HTTPGameEngineSend(response);
+        }
+
+        private static void TestGetGameEngineChat()
+        {
+            JObject response = GameEngineClient.GameGetChatRequest();
+            Client.HTTPGameEngineSend(response);
+        }
+
+        private static void TestGetGameUpdate()
+        {
+            JObject response = GameEngineClient.GetGameUpdateRequest();
+            Client.HTTPGameEngineSend(response);
+        }
+
+        private static void TestGameCommand()
+        {
+            JObject command = new JObject();
+            JObject response = GameEngineClient.GameCommandRequest(command);
+            Client.HTTPGameEngineSend(response);
+        }
+
+        private static void TestTerminateGame()
+        {
+            JObject response = GameEngineClient.GameTerminateRequest();
+            Client.HTTPGameEngineSend(response);
+        }
+
         private static void Setup()
         {
-            Client.SetAccountInformation("user", "password");
+            Client.SetAccountInformation("user", "password", "player");
 
             UriBuilder testServer = new UriBuilder("http:\\\\localhost");
             testServer.Port = 5500;
@@ -356,7 +480,7 @@ namespace WindowsClient
             testGameEngine.Port = 6500;
 
             Client.HTTPServerConnect(testServer.Uri);
-            //Client.HTTPGameEngineConnect(testGameEngine.Uri);
+            Client.HTTPGameEngineConnect(testGameEngine.Uri);
         }
     }
 }

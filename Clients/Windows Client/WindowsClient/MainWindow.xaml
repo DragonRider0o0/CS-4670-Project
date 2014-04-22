@@ -1,8 +1,69 @@
 ﻿<Window x:Class="WindowsClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MainWindow" Height="350" Width="525">
+        Title="HTTP Windows Client" MinHeight="600px" MinWidth="800px">
     <Grid>
-        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="7*" />
+            <ColumnDefinition Width="5*" />
+        </Grid.ColumnDefinitions>
+        <Grid Grid.Row ="0" Grid.Column ="0" Grid.RowSpan="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="3*" />
+                <RowDefinition Height="2*" />
+            </Grid.RowDefinitions>
+            
+            <Grid Grid.Row ="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="1*" />
+                </Grid.RowDefinitions>
+                
+                <Label Grid.Row="0" FontSize="24px" HorizontalContentAlignment="Center">Sign In</Label>
+                <TextBox Grid.Row="1" VerticalAlignment="Stretch">Username</TextBox>
+                <TextBox Grid.Row="2" VerticalAlignment="Stretch">Player Name</TextBox>
+                <PasswordBox Grid.Row="3" VerticalAlignment="Stretch"></PasswordBox>
+                <Button Grid.Row="4" VerticalAlignment="Stretch">Sign In</Button>
+                
+                </Grid>
+        </Grid>
+
+            <Grid Grid.Row ="0" Grid.Column ="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="5*" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Label Grid.Row ="0" FontSize="24px" HorizontalContentAlignment="Center"> Server Chat</Label>
+            <TextBlock  Background="#FCFCFC" Grid.Row ="1" VerticalAlignment="Stretch"> </TextBlock>
+            <TextBox Grid.Row ="2" VerticalAlignment="Stretch"></TextBox>
+            <Button Grid.Row ="3" VerticalAlignment="Stretch">Send</Button>
+        </Grid>
+
+        <Grid Grid.Row ="1" Grid.Column ="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="5*" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Label Grid.Row ="0" FontSize="24px" HorizontalContentAlignment="Center">Game Chat</Label>
+            <TextBlock  Background="#FCFCFC" Grid.Row ="1" VerticalAlignment="Stretch"></TextBlock>
+            <TextBox Grid.Row ="2" VerticalAlignment="Stretch"></TextBox>
+            <Button Grid.Row ="3" VerticalAlignment="Stretch">Send</Button>
+        </Grid>
+
+
     </Grid>
 </Window>

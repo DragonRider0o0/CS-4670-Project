@@ -17,7 +17,7 @@ webSocketClients = []
 mongoClient = None
 webSocketIndex = 0
 source = "Server"
-test_game_engine = {
+game_engine = {
     'ip': "127.0.0.1",
     'port': '6500'
 }
@@ -47,6 +47,20 @@ class Database:
 
         mongoClient = MongoClient()
         self.database = mongoClient[self.name]
+
+    def clear_database(self):
+        collection = self.database[self.gameEngines]
+        collection.remove()
+        collection = self.database[self.httpClients]
+        collection.remove()
+        collection = self.database[self.sessions]
+        collection.remove()
+        collection = self.database[self.users]
+        collection.remove()
+        collection = self.database[self.gameInformations]
+        collection.remove()
+        collection = self.database[self.chatMessages]
+        collection.remove()
 
     def add_game_engine(self, game_engine):
         game_engines = self.get_game_engines()
@@ -95,18 +109,31 @@ class Database:
         session_number = session['SessionNumber']
         session_item = self.get_session(session_number)
         if session_item is None:
-            self.serverSessionNumber += 1
+            self.serverSessionNumber = collection.count() + 1
+            collection.count()
             session['SessionNumber'] = self.serverSessionNumber
-            document = {'Session': session, 'SessionNumber': self.serverSessionNumber}
+            document = {'_id': self.serverSessionNumber, 'Session': session, 'SessionNumber': self.serverSessionNumber}
             collection.insert(document)
+            return self.serverSessionNumber
         else:
             if session_item["Username"] == session["Username"]:
-                pass
+                return session_number
             else:
-                self.serverSessionNumber += 1
+                self.serverSessionNumber = collection.count() + 1
                 session['SessionNumber'] = self.serverSessionNumber
-                document = {'Session': session, 'SessionNumber': self.serverSessionNumber}
+                document = {'_id': self.serverSessionNumber, 'Session': session, 'SessionNumber': self.serverSessionNumber}
                 collection.insert(document)
+                return self.serverSessionNumber
+
+    def get_sessions(self):
+        collection = self.database[self.sessions]
+        documents = collection.find()
+        if documents is None:
+            return None
+        sessions = []
+        for document in documents:
+            sessions.append(document['Session'])
+        return sessions
 
     def get_session(self, session_number):
         collection = self.database[self.sessions]
@@ -133,7 +160,7 @@ class Database:
             pass
         else:
             self.remove_user(username)
-        document = {'User': user, 'Username': username}
+        document = {'_id': username, 'User': user, 'Username': username}
         collection.insert(document)
 
     def get_user(self, username):
@@ -161,7 +188,7 @@ class Database:
         else:
             self.remove_game_information(game_title)
         collection = self.database[self.gameInformations]
-        document = {'GameInformation': game_information, 'Title': game_title}
+        document = {'_id': game_title, 'GameInformation': game_information, 'Title': game_title}
         collection.insert(document)
 
     def get_game_informations(self):
@@ -222,6 +249,9 @@ class Database:
 class Server:
     def __init__(self, port):
         print "LocalHost: " + str(port)
+
+        global http_client
+        http_client = httplib.HTTPConnection(game_engine['ip'], game_engine['port'])
         http_ioloop = tornado.ioloop.IOLoop.instance()
         application = tornado.web.Application([
             (r"/(.*)", HTTPBaseHandler)
@@ -239,8 +269,8 @@ class Server:
             pass
 
 
-def send_game_engine_http_message(http_body, game_engine):
-    http_client = httplib.HTTPConnection(game_engine['ip'], game_engine['port'])
+def send_game_engine_http_message(http_body):
+    global http_client
     http_client.request("POST", "/", http_body)
     response = http_client.getresponse()
     print response.read()
@@ -274,7 +304,7 @@ def process_message(data):
         if request_type == 'Game Inform':
             message = game_engine_server_game_inform_request_handler(data)
         elif request_type == 'Success':
-            message = game_engine_server_sucesss_request_handler(data)
+            message = game_engine_server_success_request_handler(data)
         elif request_type == 'Error':
             message = game_engine_server_error_request_handler(data)
         else:
@@ -310,16 +340,15 @@ class WebSocketBaseHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         global webSocketClients
         webSocketClients.append(self)
+        print "WebSocket Connected"
 
     def on_message(self, request):
         data = json.loads(request)
         response = process_message(data)
-        self.write_message(response)
+        self.write_message(json.dumps(response))
 
     def on_close(self):
         global webSocketClients
-        print "WebSocket Opened"
-
         if self in webSocketClients:
             webSocketClients.remove(self)
 
@@ -336,11 +365,17 @@ def client_server_chat_request(data):
 #Responses
 #Handle Session Request
 def client_server_session_request_handler(data):
+    global database
     username = data["Username"]
     password = data["Password"]
     client_server_authenticate_user(username, password)
     session = client_server_create_session(data)
     response = client_server_session_response(session)
+
+
+    http_body = json.dumps(server_game_engine_server_session_inform_request());
+    send_game_engine_http_message(http_body)
+
     return response
 
 
@@ -354,7 +389,7 @@ def client_server_create_session(data):
     else:
         session['Username'] = username
         database.remove_session(session_number)
-    database.add_session(session)
+    session_number = database.add_session(session)
     return database.get_session(session_number)
 
 
@@ -363,14 +398,9 @@ def client_server_session_response(data):
     session_number = data["SessionNumber"]
     username = data["Username"]
     if client_server_session_valid(session_number, username):
-        session = database.get_session(session_number)
-        session_number = session["SessionNumber"]
-        username = session["Username"]
         response = {'Type': 'Server Session', 'SessionNumber': session_number, 'Username': username}
     else:
-        command = "Session Request"
-        message = "Authentication unsuccessful - invalid username or password"
-        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+        response = client_server_fail_response(data)
     global source
     response["Source"] = source
     return response
@@ -382,11 +412,16 @@ def client_server_chat_handler(data):
     message = client_server_chat_response(data)
     for webSocketClient in webSocketClients:
         webSocketClient.write_message(message)
-    return client_server_chat_response(message)
+    return message
 
 
 def client_server_chat_response(data):
-    response = data
+    session_number = data['SessionNumber']
+    username = data["Username"]
+    if client_server_session_valid(session_number, username):
+        response = data
+    else:
+        response = client_server_fail_response(data)
     global source
     response["Source"] = source
     return response
@@ -404,14 +439,9 @@ def client_server_get_chat_response(data):
     if client_server_session_valid(session_number, username):
         response = database.get_chat_message(session_number)
         if response is None:
-            command = "Get Server Chat"
-            message = "No pending messages"
-            response = {'Type': 'Error', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+            response = client_server_error_response(data)
     else:
-        command = "Authentication Failure"
-        message = "Authentication unsuccessful - invalid username or password"
-        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
-    global source
+        response = client_server_fail_response(data)
     response["Source"] = source
     return response
 
@@ -428,9 +458,7 @@ def client_server_game_list_response(data):
         game_list = client_server_get_game_list()
         response = {'Type': 'Game List', 'SessionNumber': session_number, 'Username': username, 'Games': game_list}
     else:
-        command = "Game List Response"
-        message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+        response = client_server_fail_response(data)
     global source
     response["Source"] = source
     return response
@@ -452,42 +480,38 @@ def client_server_terminate_response(data):
     username = data["Username"]
     if client_server_session_valid(session_number, username):
         if client_server_terminate_session(session_number):
-            command = "Session Terminate"
-            message = "Termination successful"
-            response = {'Type': 'Success', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+            response = client_server_success_response(data)
         else:
             response = client_server_error_response(data)
     else:
-        command = "Session Terminate"
-        message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+        response = client_server_fail_response(data)
     global source
     response["Source"] = source
     return response
 
 
 def client_server_terminate_session(session_number):
-    return True
+    global database
+    session = database.get_session(session_number)
+    if session is None:
+        return False
+    else:
+        database.remove_session(session_number)
+        return True
 
 
 #Handle Success
 def client_server_success_request_handler(data):
-    return client_server_success_response(data)
+    print data
+    return {}
 
 
 def client_server_success_response(data):
+    command = data["Type"]
     session_number = data["SessionNumber"]
     username = data["Username"]
-    if client_server_session_valid(session_number, username):
-        #print "Session: " + str(data["SessionNumber"])
-        #print "Player: " + str(data["PlayerName"])
-        #print "Request:" + str(data["Command"])
-        #print "Success: " + str(data["Message"])
-        response = {}
-    else:
-        command = "Success"
-        message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'SessionNumber': data["SessionNumber"], 'Username': username, 'Command': command, 'Message': message}
+    message = "Everything seems okay"
+    response = {'Type': 'Success', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -495,22 +519,15 @@ def client_server_success_response(data):
 
 #Handle Fail
 def client_server_fail_request_handler(data):
+    print data
     return client_server_fail_response(data)
 
-
 def client_server_fail_response(data):
+    command = data["Type"]
     session_number = data["SessionNumber"]
     username = data["Username"]
-    if client_server_session_valid(session_number, username):
-        #print "Session: " + str(data["SessionNumber"])
-        #print "Player: " + str(data["PlayerName"])
-        #print "Request:" + str(data["Command"])
-        #print "Fail: " + str(data["Message"])
-        response = {}
-    else:
-        command = "Fail"
-        message = "Action may only be performed by authenticated clients"
-        response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+    message = "Action may only be performed by authenticated clients"
+    response = {'Type': 'Fail', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -518,13 +535,16 @@ def client_server_fail_response(data):
 
 #Handle Error
 def client_server_error_request_handler(data):
-    #print data
+    print data
     return client_server_error_response(data)
 
 
 def client_server_error_response(data):
-    print data
-    response = data
+    command = data["Type"]
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    message = "Something went wrong"
+    response = {'Type': 'Error', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
     global source
     response["Source"] = source
     return response
@@ -557,8 +577,11 @@ def client_server_session_valid(session_number, username):
 
 #Server - Game Engine
 #Requests
-def server_game_engine_server_session_inform_request(sessions):
+def server_game_engine_server_session_inform_request():
+    global database
     global source
+
+    sessions = database.get_sessions()
     request = {'Type': 'Session Inform', 'Sessions': sessions, 'Source': source}
     return request
 
@@ -576,46 +599,59 @@ def game_engine_server_game_inform_request_handler(data):
 
 
 def game_engine_server_game_inform_response(data):
-    global test_game_engine
     game_engine_server_add_game(data)
 
-    http_body = json.dumps(server_game_engine_server_session_inform_request({'SessionNumber': 0, 'Username': 'Test'}))
-    send_game_engine_http_message(http_body, test_game_engine)
+    #sessions = [{'SessionNumber': 0, 'Username': 'Test'}]
+    #http_body = json.dumps(server_game_engine_server_session_inform_request(sessions))
+    #send_game_engine_http_message(http_body)
 
     return {}
 
 
 def game_engine_server_add_game(data):
-
     global database
     game_info = data['GameInfo']
     game_title = game_info['Title']
     document = game_info
-    if database.get_game(game_title) is None:
-        database.add_game(document)
+    if database.get_game_information(game_title) is None:
+        database.add_game_information(document)
     else:
-        database.remove_game(game_title)
-        database.add_game(document)
+        database.remove_game_information(game_title)
+        database.add_game_information(document)
 
 
 #Handle Success
-def game_engine_server_sucesss_request_handler(data):
-    return game_engine_server_success_response(data)
+def game_engine_server_success_request_handler(data):
+    print data
+    return {}
 
 
 def game_engine_server_success_response(data):
-    print data
-    return {}
+    command = data["Type"]
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    message = "Everything seems okay"
+    response = {'Type': 'Success', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+    global source
+    response["Source"] = source
+    return response
 
 
 #Handle Error
 def game_engine_server_error_request_handler(data):
+    print data
     return game_engine_server_error_response(data)
 
 
 def game_engine_server_error_response(data):
-    print data
-    return {}
+    command = data["Type"]
+    session_number = data["SessionNumber"]
+    username = data["Username"]
+    message = "Something went wrong"
+    response = {'Type': 'Error', 'SessionNumber': session_number, 'Username': username, 'Command': command, 'Message': message}
+    global source
+    response["Source"] = source
+    return response
 
 
 #def tcp_base_handler(sock, fd, events):

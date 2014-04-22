@@ -1,3 +1,93 @@
+serverChatMessages = [];
+lastUserServerMessage = "";
+
+gameChatMessages = [];
+lastUserGameMessage = "";
+
+function signInHandler()
+{
+    var usernameField = document.getElementById("username");
+    var playerNameField = document.getElementById("playerName");
+    var passwordField = document.getElementById("password");
+
+    var username = usernameField.value;
+    var playerName = playerNameField.value;
+    var password = passwordField.value;
+
+    if(username == "" || playerName == "" || password =="")
+    {
+        return;
+    }
+    else
+    {
+        var signInElement = document.getElementById("signIn");
+        signInElement.className += " hide";
+
+        var signInElement = document.getElementById("game");
+        signInElement.className = "col-lg-7 show";
+
+        Client.SetAccountInformation(username, password, playerName);
+
+        var response = ServerClient.ServerSessionRequest();
+        Client.serverWebSocket.send(response);
+
+        var response = GameEngineClient.GameSessionRequest();
+        Client.gameEngineWebSocket.send(response);
+    }
+}
+
+function sendServerChatHandler()
+{
+    var serverMessageField = document.getElementById("serverMessage");
+
+    var serverMessage = serverMessageField.value;
+    var username = Client.username;
+    var playerName = Client.playerName;
+    var status = Client.status;
+    lastUserServerMessage = serverMessage;
+
+    var chatText = "<p>(" + status + ") Me: " + serverMessage + "</p>";
+    serverChatMessages.push(chatText);
+    serverChatBox = document.getElementById("serverChatBox");
+    serverChatBox.innerHTML = serverChatMessages;
+
+    var response = ServerClient.ServerChatRequest(serverMessage, status);
+    Client.serverWebSocket.send(response);
+}
+
+function sendGameEngineChatHandler()
+{
+    var gameMessageField = document.getElementById("gameMessage");
+
+    var gameMessage = gameMessageField.value;
+    var username = Client.username;
+    var playerName = Client.playerName;
+    var status = Client.status;
+    lastUserGameMessage = gameMessage;
+
+    var chatText = "<p>(" + status + ") Me: " + gameMessage + "</p>";
+    gameChatMessages.push(chatText);
+    gameChatBox = document.getElementById("gameChatBox");
+    gameChatBox.innerHTML = gameChatMessages;
+
+    var response = GameEngineClient.GameChatRequest(gameMessage, status);
+    Client.gameEngineWebSocket.send(response);
+}
+
+
+function Setup()
+{
+    Client.serverURI.ip = "127.0.0.1";
+    Client.serverURI.port= "5500";
+    Client.ServerWebsocketConnect("localhost", "5500");
+
+    Client.gameEngineURI.ip = "127.0.0.1";
+    Client.gameEngineURI.port= "6500";
+    Client.GameEngineWebsocketConnect("localhost", "6500");
+}
+
+
+
 var Client = {
     serverWebSocket: null,
     serverURI: {ip: "", port: ""},
@@ -15,9 +105,11 @@ var Client = {
     gameList: null,
     game: null,
 
-    Setup: function (username, password) {
+    SetAccountInformation: function (username, password, playerName) {
         this.username = username;
-        this.password = password
+        this.password = password;
+        this.playerName = playerName;
+        this.status = "Active";
     },
     WebsocketRequestHandler: function (evt) {
         Client.ProcessMessage(evt.data)
@@ -55,7 +147,6 @@ var Client = {
         this.serverWebSocket.send(data);
     },
     ProcessMessage: function (message) {
-		//alert(message);
         var response = JSON.parse(message)
         if (response.Source == "Server") {
             if (response.Type == "Server Session") {
@@ -156,8 +247,18 @@ var ServerClient = {
         var username = response.Username;
         var message = response.Message;
         var status = response.Status;
-        var chatText = "(" + status + ") " + username + ": " + message + "\n";
-        alert(chatText);
+        if(lastUserServerMessage == message)
+        {
+            return
+        }
+        else
+        {
+            var chatText = "<p>(" + status + ") " + username + ": " + message + "</p>";
+            serverChatMessages.push(chatText);
+            serverChatBox = document.getElementById("serverChatBox");
+            serverChatBox.innerHTML = serverChatMessages;
+        }
+
     },
     ServerGameListHandler: function (response) {
         Client.gameList = response.Games;
@@ -185,77 +286,105 @@ var ServerClient = {
 };
 var GameEngineClient = {
     Source: "Client",
-    GameSessionRequest: function (sessionNumber, username) {
+    GameSessionRequest: function () {
         var gameSessionRequest = {
             Type: "Game Session Request",
-            SessionNumber: sessionNumber,
-            Username: username,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            Username: Client.username,
+            PlayerName: Client.playerName,
+            Source: Client.source
         };
         return JSON.stringify(gameSessionRequest);
     },
-    GameChatRequest: function (sessionNumber, playerName, message, status) {
+    GameChatRequest: function (message, status) {
         var gameChatRequest = {
             Type: "Game Chat",
-            SessionNumber: sessionNumber,
-            PlayerName: playerName,
+            SessionNumber: Client.sessionNumber,
+            PlayerName: Client.playerName,
             Message: message,
             Status: status,
-            Source: this.Source
+            Source: Client.source
         };
         return JSON.stringify(gameChatRequest);
     },
-    GameGetChatRequest: function (sessionNumber, playerName) {
+    GameGetChatRequest: function () {
         var getChatRequest = {
             Type: "Get Chat",
-            SessionNumber: sessionNumber,
-            PlayerName: playerName,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            PlayerName: Client.playerName,
+            Source: Client.source
         };
         return JSON.stringify(getChatRequest);
     },
-    GameGetUpdateRequest: function (sessionNumber, playerName) {
+    GameGetUpdateRequest: function () {
         var getGameUpdateRequest = {
             Type: "Get Game Update",
-            SessionNumber: sessionNumber,
-            PlayerName: playerName,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            PlayerName: Client.playerName,
+            Source: Client.source
         };
         return JSON.stringify(getGameUpdateRequest);
     },
-    GameCommandRequest: function (sessionNumber, playerName, command) {
+    GameCommandRequest: function (command) {
         var gameCommandRequest = {
             Type: "Game Command",
-            SessionNumber: sessionNumber,
-            PlayerName: playerName,
+            SessionNumber: Client.sessionNumber,
+            PlayerName: Client.playerName,
             Command: command,
-            Source: this.Source
+            Source: Client.source
         };
         return JSON.stringify(gameCommandRequest);
     },
-    GameTerminateRequest: function (sessionNumber, playerName) {
+    GameTerminateRequest: function () {
         var gameTerminateRequest = {
             Type: "Terminate Game",
-            SessionNumber: sessionNumber,
-            PlayerName: playerName,
-            Source: this.Source
+            SessionNumber: Client.sessionNumber,
+            PlayerName: Client.playerName,
+            Source: Client.source
         };
         return JSON.stringify(gameTerminateRequest);
     },
 
-    GameSessionHandler: function (SessionData) {
+    GameSessionHandler: function (response) {
         Client.player = SessionData.Player;
     },
-    GameChatHandler: function (chatData) {
+    GameChatHandler: function (response) {
+        var playerName = response.PlayerName;
+        var message = response.Message;
+        var status = response.Status;
+        if(lastUserGameMessage == message)
+        {
+            return
+        }
+        else
+        {
+            var chatText = "<p>(" + status + ") " + playerName + ": " + message + "</p>";
+            gameChatMessages.push(chatText);
+            gameChatBox = document.getElementById("gameChatBox");
+            gameChatBox.innerHTML = gameChatMessages;
+        }
+
     },
-    GameUpdateHandler: function (gameUpdateData) {
+    GameUpdateHandler: function (response) {
         Client.game = gameUpdateData.Update;
     },
-    GameSuccessHandler: function (successData) {
+    GameSuccessHandler: function (response) {
+        var message = response.Message;
+        var command = response.Command;
+        var successText = "Success: " + command + "\n" + message + "\n";
+        alert(successText);
     },
-    GameFailHandler: function (failData) {
+    GameFailHandler: function (response) {
+        var message = response.Message;
+        var command = response.Command;
+        var failText = "Fail: " + command + "\n" + message + "\n";
+        alert(failText);
     },
-    GameErrorHandler: function (errorData) {
+    GameErrorHandler: function (response) {
+        var message = response.Message;
+        var command = response.Command;
+        var errorText = "Error: " + command + "\n" + message + "\n";
+        alert(errorText);
     }
 };
 
@@ -264,27 +393,35 @@ var Test =
     Run: function()
     {
         Test.Setup();
-        setTimeout(this.RunTests, 1000)
+
+        setTimeout(
+            function()
+            {
+                //Test.BeginServerTests();
+                Test.BeginGameEngineTests();
+            },5000);
+
     },
-    RunTests: function()
+    BeginServerTests: function()
     {
-        //Test.TestSessionRequest();
-        //Test.TestServerChat();
-        //Test.TestGetServerChat();
+        Test.TestSessionRequest();
+        var timer = setInterval(
+            function()
+            {
+                if(Client.sessionNumber > 0)
+                {
+                    Test.RunServerTests();
+                    clearInterval(timer)
+                }
+            }
+            , 1000);
+    },
+    RunServerTests: function()
+    {
+        Test.TestServerChat();
+        Test.TestGetServerChat();
         Test.TestGetGames();
-    },
-
-    Setup: function()
-    {
-        Client.Setup("user", "password");
-
-        Client.serverURI.ip = "127.0.0.1";
-        Client.serverURI.port= "5500";
-        Client.ServerWebsocketConnect("localhost", "5500");
-
-        Client.gameEngineURI.ip = "127.0.0.1";
-        Client.gameEngineURI.port= "6500";
-        //Client.GameEngineWebsocketConnect("localhost", "5500");
+        Test.TestTerminateServer();
     },
     TestSessionRequest: function()
     {
@@ -305,7 +442,77 @@ var Test =
     {
         var response = ServerClient.ServerGetGameList();
         Client.serverWebSocket.send(response);
+    },
+    TestTerminateServer: function()
+    {
+        var response = ServerClient.ServerTerminateSessionRequest();
+        Client.serverWebSocket.send(response);
+    },
+    BeginGameEngineTests: function()
+    {
+        Test.TestGameSessionRequest();
+        var timer = setInterval(
+            function()
+            {
+                if(Client.sessionNumber > 0)
+                {
+                    Test.RunGameEngineTests();
+                    clearInterval(timer)
+                }
+            }
+            , 5000)
+    },
+    RunGameEngineTests: function()
+    {
+        Test.TestGameEngineChat();
+        Test.TestGetGameEngineChat();
+        Test.TestGetGameUpdate();
+        Test.TestGameCommand();
+        Test.TestTerminateGame();
+    },
+    TestGameSessionRequest: function ()
+    {
+        var response = GameEngineClient.GameSessionRequest();
+        Client.gameEngineWebSocket.send(response);
+    },
+    TestGameEngineChat: function ()
+    {
+        var message = "Test";
+        var status = "Testing";
+        var response = GameEngineClient.GameChatRequest(message, status);
+        Client.gameEngineWebSocket.send(response);
+    },
+    TestGetGameEngineChat: function ()
+    {
+        var response = GameEngineClient.GameGetChatRequest();
+        Client.gameEngineWebSocket.send(response);
+    },
+    TestGetGameUpdate: function ()
+    {
+        var response = GameEngineClient.GameGetUpdateRequest();
+        Client.gameEngineWebSocket.send(response);
+    },
+    TestGameCommand: function ()
+    {
+        var command = {};
+        var response = GameEngineClient.GameCommandRequest(command);
+        Client.gameEngineWebSocket.send(response);
+    },
+    TestTerminateGame: function ()
+    {
+        var response = GameEngineClient.GameTerminateRequest();
+        Client.gameEngineWebSocket.send(response);
+    },
+    Setup: function()
+    {
+        Client.Setup("user", "password");
+
+        Client.serverURI.ip = "127.0.0.1";
+        Client.serverURI.port= "5500";
+        Client.ServerWebsocketConnect("localhost", "5500");
+
+        Client.gameEngineURI.ip = "127.0.0.1";
+        Client.gameEngineURI.port= "6500";
+        Client.GameEngineWebsocketConnect("localhost", "5500");
     }
-
-
 }
