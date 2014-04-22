@@ -261,6 +261,7 @@ var ServerClient = {
         var username = response.Username;
         var message = response.Message;
         var status = response.Status;
+
         if(Client.lastUserServerMessage == message)
         {
             return
@@ -272,7 +273,6 @@ var ServerClient = {
             serverChatBox = document.getElementById("serverChatBox");
             serverChatBox.innerHTML = Client.serverChatMessages;
         }
-
     },
     ServerGameListHandler: function (response) {
         Client.gameList = response.Games;
@@ -377,7 +377,6 @@ var GameEngineClient = {
             gameChatBox = document.getElementById("gameChatBox");
             gameChatBox.innerHTML = Client.gameChatMessages;
         }
-
     },
     GameUpdateHandler: function (response) {
         Client.game = gameUpdateData.Update;

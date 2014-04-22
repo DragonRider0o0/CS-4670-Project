@@ -36,7 +36,7 @@ namespace WindowsClient
 
             //ServerChatBox.DataContext = Client.UiData.ServerChatMessages;
             //GameChatBox.DataContext = Client.GameChatMessages;
-            Test.Run();
+            //Test.Run();
 
             //ServerChatBox = new TextBlock();
             //Binding serverChatBinding = new Binding("ServerChatMessages");

@@ -418,10 +418,10 @@ def client_server_chat_handler(data):
 def client_server_chat_response(data):
     session_number = data['SessionNumber']
     username = data["Username"]
-    if client_server_session_valid(session_number, username):
-        response = data
-    else:
-        response = client_server_fail_response(data)
+    #if client_server_session_valid(session_number, username):
+    response = data
+    #else:
+    #    response = client_server_fail_response(data)
     global source
     response["Source"] = source
     return response
