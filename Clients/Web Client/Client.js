@@ -1,9 +1,3 @@
-serverChatMessages = [];
-lastUserServerMessage = "";
-
-gameChatMessages = [];
-lastUserGameMessage = "";
-
 function signInHandler()
 {
     var usernameField = document.getElementById("username");
@@ -44,15 +38,22 @@ function sendServerChatHandler()
     var username = Client.username;
     var playerName = Client.playerName;
     var status = Client.status;
-    lastUserServerMessage = serverMessage;
 
-    var chatText = "<p>(" + status + ") Me: " + serverMessage + "</p>";
-    serverChatMessages.push(chatText);
-    serverChatBox = document.getElementById("serverChatBox");
-    serverChatBox.innerHTML = serverChatMessages;
+    if (serverMessage == "")
+    {
+        return;
+    }
+    else
+    {
+        Client.lastUserServerMessage = serverMessage;
+        var chatText = "<p>(" + status + ") Me: " + serverMessage + "</p>";
+        Client.serverChatMessages = (chatText) + Client.serverChatMessages;
+        serverChatBox = document.getElementById("serverChatBox");
+        serverChatBox.innerHTML = Client.serverChatMessages;
 
-    var response = ServerClient.ServerChatRequest(serverMessage, status);
-    Client.serverWebSocket.send(response);
+        var response = ServerClient.ServerChatRequest(serverMessage, status);
+        Client.serverWebSocket.send(response);
+    }
 }
 
 function sendGameEngineChatHandler()
@@ -63,15 +64,22 @@ function sendGameEngineChatHandler()
     var username = Client.username;
     var playerName = Client.playerName;
     var status = Client.status;
-    lastUserGameMessage = gameMessage;
+    if (gameMessage == "")
+    {
+        return;
+    }
+    else
+    {
+        Client.lastUserGameMessage = gameMessage;
 
-    var chatText = "<p>(" + status + ") Me: " + gameMessage + "</p>";
-    gameChatMessages.push(chatText);
-    gameChatBox = document.getElementById("gameChatBox");
-    gameChatBox.innerHTML = gameChatMessages;
+        var chatText = "<p>(" + status + ") Me: " + gameMessage + "</p>";
+        Client.gameChatMessages = (chatText) + Client.gameChatMessages;
+        gameChatBox = document.getElementById("gameChatBox");
+        gameChatBox.innerHTML = Client.gameChatMessages;
 
-    var response = GameEngineClient.GameChatRequest(gameMessage, status);
-    Client.gameEngineWebSocket.send(response);
+        var response = GameEngineClient.GameChatRequest(gameMessage, status);
+        Client.gameEngineWebSocket.send(response);
+    }
 }
 
 
@@ -104,6 +112,12 @@ var Client = {
     source: "Client",
     gameList: null,
     game: null,
+
+    serverChatMessages: "",
+    lastUserServerMessage: "",
+
+     gameChatMessages: "",
+     lastUserGameMessage: "",
 
     SetAccountInformation: function (username, password, playerName) {
         this.username = username;
@@ -247,16 +261,16 @@ var ServerClient = {
         var username = response.Username;
         var message = response.Message;
         var status = response.Status;
-        if(lastUserServerMessage == message)
+        if(Client.lastUserServerMessage == message)
         {
             return
         }
         else
         {
             var chatText = "<p>(" + status + ") " + username + ": " + message + "</p>";
-            serverChatMessages.push(chatText);
+            Client.serverChatMessages = (chatText) + Client.serverChatMessages;
             serverChatBox = document.getElementById("serverChatBox");
-            serverChatBox.innerHTML = serverChatMessages;
+            serverChatBox.innerHTML = Client.serverChatMessages;
         }
 
     },
@@ -352,16 +366,16 @@ var GameEngineClient = {
         var playerName = response.PlayerName;
         var message = response.Message;
         var status = response.Status;
-        if(lastUserGameMessage == message)
+        if(Client.lastUserGameMessage == message)
         {
             return
         }
         else
         {
             var chatText = "<p>(" + status + ") " + playerName + ": " + message + "</p>";
-            gameChatMessages.push(chatText);
+            Client.gameChatMessages = (chatText) + Client.gameChatMessages;
             gameChatBox = document.getElementById("gameChatBox");
-            gameChatBox.innerHTML = gameChatMessages;
+            gameChatBox.innerHTML = Client.gameChatMessages;
         }
 
     },

@@ -26,42 +26,57 @@
                     <RowDefinition Height="1*" />
                     <RowDefinition Height="1*" />
                 </Grid.RowDefinitions>
-                
-                <Label Grid.Row="0" FontSize="24px" HorizontalContentAlignment="Center">Sign In</Label>
-                <TextBox Grid.Row="1" VerticalAlignment="Stretch">Username</TextBox>
-                <TextBox Grid.Row="2" VerticalAlignment="Stretch">Player Name</TextBox>
-                <PasswordBox Grid.Row="3" VerticalAlignment="Stretch"></PasswordBox>
-                <Button Grid.Row="4" VerticalAlignment="Stretch">Sign In</Button>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="7*" />
+                    <ColumnDefinition Width="1*" />
+                </Grid.ColumnDefinitions>
+
+
+                <Label Grid.Row ="1" Grid.Column="0" FontSize="18px" HorizontalContentAlignment="Center">Username</Label>
+                <TextBox Grid.Row="1" Grid.Column="1" FontSize="18px" VerticalAlignment="Stretch" VerticalContentAlignment="Center" x:Name="UsernameField"></TextBox>
+                <Label Grid.Row ="2" Grid.Column="0" FontSize="18px" HorizontalContentAlignment="Center">Player Name</Label>
+                <TextBox Grid.Row="2" Grid.Column="1" FontSize="18px" VerticalAlignment="Stretch" VerticalContentAlignment="Center" x:Name="PlayerNameField"></TextBox>
+                <Label Grid.Row ="3" Grid.Column="0" FontSize="18px" HorizontalContentAlignment="Center">Password</Label>
+                <PasswordBox Grid.Row="3" Grid.Column="1" FontSize="18px" VerticalAlignment="Stretch" VerticalContentAlignment="Center" x:Name="PasswordField"></PasswordBox>
+                <Button x:Name="Sign_In" Grid.Row="4" Grid.Column="1" FontSize="18px" VerticalAlignment="Stretch" Click="SignInHandler">Sign In</Button>
                 
                 </Grid>
         </Grid>
 
             <Grid Grid.Row ="0" Grid.Column ="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="2*" />
+                <RowDefinition Height="1*" />
                 <RowDefinition Height="5*" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="1*" />
             </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10*" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
 
             <Label Grid.Row ="0" FontSize="24px" HorizontalContentAlignment="Center"> Server Chat</Label>
-            <TextBlock  Background="#FCFCFC" Grid.Row ="1" VerticalAlignment="Stretch"> </TextBlock>
-            <TextBox Grid.Row ="2" VerticalAlignment="Stretch"></TextBox>
-            <Button Grid.Row ="3" VerticalAlignment="Stretch">Send</Button>
+            <ListBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" FontSize="18px" IsSynchronizedWithCurrentItem="True" VerticalAlignment="Stretch" x:Name="ServerChatBox"> </ListBox>
+            <TextBox Grid.Row="2" Grid.Column="0" FontSize="18px" VerticalAlignment="Stretch" VerticalContentAlignment="Center" x:Name="ServerMessage"></TextBox>
+            <Button Grid.Row="2" Grid.Column="1" FontSize="18px" VerticalAlignment="Stretch" Click="SendServerChatHandler">Send</Button>
         </Grid>
 
         <Grid Grid.Row ="1" Grid.Column ="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="2*" />
+                <RowDefinition Height="*" />
                 <RowDefinition Height="5*" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="1*" />
             </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10*" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
 
-            <Label Grid.Row ="0" FontSize="24px" HorizontalContentAlignment="Center">Game Chat</Label>
-            <TextBlock  Background="#FCFCFC" Grid.Row ="1" VerticalAlignment="Stretch"></TextBlock>
-            <TextBox Grid.Row ="2" VerticalAlignment="Stretch"></TextBox>
-            <Button Grid.Row ="3" VerticalAlignment="Stretch">Send</Button>
+            <Label Grid.Row ="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="24px" HorizontalContentAlignment="Center">Game Chat</Label>
+            <ListBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" FontSize="18px" IsSynchronizedWithCurrentItem="True" VerticalAlignment="Stretch" x:Name="GameChatBox"></ListBox>
+            <TextBox Grid.Row="2" Grid.Column="0" FontSize="18px" VerticalAlignment="Stretch" VerticalContentAlignment="Center" x:Name="GameMessage"></TextBox>
+            <Button Grid.Row="2" Grid.Column="1" FontSize="18px" VerticalAlignment="Stretch" Click="SendGameChatHandler">Send</Button>
         </Grid>
 
 

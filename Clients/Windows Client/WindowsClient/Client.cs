@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -29,6 +31,44 @@ namespace WindowsClient
         internal static JArray GameList;
         internal static JObject Game;
 
+        internal static ObservableCollection<string> ServerChatMessages = new ObservableCollection<string>();
+        internal static ObservableCollection<string> GameChatMessages = new ObservableCollection<string>();
+
+        //internal static event PropertyChangedEventHandler ServerChatMessagesChanged;
+        ////private static string _ServerChatMessages = "";
+
+        //public class ServerChatMessages : INotifyPropertyChanged
+        //{
+        //    private string _text;
+        //    public string Text
+        //    {
+        //        get
+        //        {
+        //            return _text;
+        //        }
+        //        set
+        //        {
+        //            _text = value;
+        //            OnPropertyChanged("ServerMessages");
+        //        }
+        //    }
+
+        //    protected void OnPropertyChanged(string propertyName)
+        //    {
+        //        if (PropertyChanged != null)
+        //        {
+        //            PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+        //        }
+        //    }
+        //    public event PropertyChangedEventHandler PropertyChanged;
+        //}
+        
+
+
+        internal static string LastUserServerMessage = "";
+
+        internal static string LastUserGameMessage = "";
+
         static Client()
         {
             Password = "";
@@ -42,6 +82,7 @@ namespace WindowsClient
             Username = username;
             Password = password;
             PlayerName = playerName;
+            Status = "Active";
         }
 
         internal static void HTTPServerConnect(Uri httpServerUri)
@@ -206,9 +247,16 @@ namespace WindowsClient
             string username = response["Username"].Value<string>();
             string message = response["Message"].Value<string>();
             string status = response["Status"].Value<string>();
-            string chatText = "(" + status + ") " + username + ": " + message + "\n";
 
-            MessageBox.Show(chatText);
+            if(Client.LastUserServerMessage == message)
+            {
+                return;
+            }
+            else
+            {
+                string chatText = "(" + status + ") " + username + ": " + message + "";
+                Client.ServerChatMessages.Add(chatText); 
+            }
         }
 
         internal static void ServerGameListHandler(JObject response)
@@ -257,14 +305,14 @@ namespace WindowsClient
 
         internal static JObject GameChatRequest(string message)
         {
-            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Message': '" + message + "', 'Status': " + Client.Status + ", 'Source': '" + Client.Source + "' }";
+            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Message': '" + message + "', 'Status': '" + Client.Status + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(gameChatRequest);
         }
 
         internal static JObject GameChatRequest(string message, string status)
         {
             Client.Status = status;
-            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Message': '" + message + "', 'Status': " + Client.Status + ", 'Source': '" + Client.Source + "' }";
+            string gameChatRequest = "{'Type': 'Game Chat', 'SessionNumber': " + Client.SessionNumber + ", 'PlayerName': '" + Client.PlayerName + "', 'Message': '" + message + "', 'Status': '" + Client.Status + "', 'Source': '" + Client.Source + "' }";
             return JObject.Parse(gameChatRequest);
         }
 
@@ -303,9 +351,16 @@ namespace WindowsClient
             string playerName = response["PlayerName"].Value<string>();
             string message = response["Message"].Value<string>();
             string status = response["Status"].Value<string>();
-            string chatText = "(" + status + ") " + playerName + ": " + message + "\n";
 
-            MessageBox.Show(chatText);
+            if (Client.LastUserGameMessage == message)
+            {
+                return;
+            }
+            else
+            {
+                string chatText = "(" + status + ") " + playerName + ": " + message + "";
+                Client.GameChatMessages.Add(chatText); 
+            }
         }
 
         internal static void GameUpdateHandler(JObject response)
@@ -484,3 +539,35 @@ namespace WindowsClient
         }
     }
 }
+
+//public class UIData : INotifyPropertyChanged
+//{
+//    // boiler-plate
+
+//    public UIData()
+//    {
+//        ServerChatMessages = "";
+//    }
+
+//    public event PropertyChangedEventHandler PropertyChanged;
+//    protected virtual void OnPropertyChanged(string propertyName)
+//    {
+//        PropertyChangedEventHandler handler = PropertyChanged;
+//        if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+//    }
+//    protected bool SetField<T>(ref T field, T value, string propertyName)
+//    {
+//        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+//        field = value;
+//        OnPropertyChanged(propertyName);
+//        return true;
+//    }
+
+//    // props
+//    private string serverChatMessages;
+//    public string ServerChatMessages
+//    {
+//        get { return serverChatMessages; }
+//        set { SetField(ref serverChatMessages, value, "ServerChatMessages"); }
+//    }
+//}

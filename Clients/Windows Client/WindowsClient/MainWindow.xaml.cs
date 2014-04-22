@@ -30,7 +30,19 @@ namespace WindowsClient
         public MainWindow()
         {
             InitializeComponent();
+
+            ServerChatBox.ItemsSource = Client.ServerChatMessages;
+            GameChatBox.ItemsSource = Client.GameChatMessages;
+
+            //ServerChatBox.DataContext = Client.UiData.ServerChatMessages;
+            //GameChatBox.DataContext = Client.GameChatMessages;
             Test.Run();
+
+            //ServerChatBox = new TextBlock();
+            //Binding serverChatBinding = new Binding("ServerChatMessages");
+            //ServerChatBox.DataContext = Client.UiData.ServerChatMessages;
+            //serverChatBinding.Source = Client.UiData.ServerChatMessages;
+            //ServerChatBox.SetBinding(TextBlock.TextProperty, serverChatBinding);
 
             //string serverAddressString = "http:\\\\localhost";
             //UriBuilder serverURI = new UriBuilder(serverAddressString);
@@ -62,6 +74,83 @@ namespace WindowsClient
                 Client.HTTPServerSend(JObject.Parse(testMessage));
             }
         }
+
+        private void SignInHandler(object sender, RoutedEventArgs e)
+        {
+            string Username = UsernameField.Text;
+            string PlayerName = PlayerNameField.Text;
+            string Password = PasswordField.Password;
+
+            if (Username.Equals("") || PlayerName.Equals("") || Password.Equals(""))
+            {
+                return;
+            }
+            else
+            {
+                /*var signInElement = document.getElementById("signIn");
+                signInElement.className += " hide";
+
+                var signInElement = document.getElementById("game");
+                signInElement.className = "col-lg-7 show";*/
+
+                Client.SetAccountInformation(Username, Password, PlayerName);
+
+                JObject serverResponse = ServerClient.ServerSessionRequest();
+                Client.HTTPServerSend(serverResponse);
+
+                var gameResponse = GameEngineClient.GameSessionRequest();
+                Client.HTTPGameEngineSend(gameResponse); ;
+            }
+
+        }
+
+        private void SendServerChatHandler(object sender, RoutedEventArgs e)
+        {
+            string serverMessage = ServerMessage.Text;
+            string Username = Client.Username;
+            string PlayerName = Client.PlayerName;
+            string status = Client.Status;
+
+            if (serverMessage.Equals(""))
+            {
+                return;
+            }
+            else
+            {
+                Client.LastUserServerMessage = serverMessage;
+                string chatText = "(" + status + ") Me: " + serverMessage + "\n\n";
+                Client.ServerChatMessages.Add(chatText); 
+                //ServerChatBox.Text = Client.ServerChatMessages;
+                
+                JObject serverResponse = ServerClient.ServerChatRequest(serverMessage, status);
+                Client.HTTPServerSend(serverResponse);
+            }
+        }
+
+        private void SendGameChatHandler(object sender, RoutedEventArgs e)
+        {
+            string gameMessage = GameMessage.Text;
+            string Username = Client.Username;
+            string PlayerName = Client.PlayerName;
+            string status = Client.Status;
+
+            if (gameMessage.Equals(""))
+            {
+                return;
+            }
+            else
+            {
+                Client.LastUserGameMessage = gameMessage;
+                string chatText = "(" + status + ") Me: " + gameMessage + "\n\n";
+                Client.GameChatMessages.Add(chatText); 
+
+                JObject gameResponse = GameEngineClient.GameChatRequest(gameMessage, status);
+                Client.HTTPGameEngineSend(gameResponse);
+            }
+
+            
+        }
+
 
         //private void testGameEngine()
         //{
