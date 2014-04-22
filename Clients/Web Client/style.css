@@ -1,0 +1,79 @@
+.form-input
+{
+    height: 45px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.ChatBox
+{
+    border: 1px solid #DDDDDD;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px;
+    margin-top: 30px;
+    margin-bottom:0px;
+    height: 400px;
+}
+
+.ChatTitle
+{
+    text-align: center;
+    font-size: 24px;
+}
+
+.ChatBody
+{
+    background-color: #FCFCFC;
+    height: 235px;
+    overflow-y: scroll;
+}
+
+.ChatMessage
+{
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.ChatSend
+{
+
+}
+
+#game
+{
+
+    margin-top: 30px;
+    margin-bottom:0px;
+    height: 830px;
+    border: 1px solid #DDDDDD;
+    background-color: #FCFCFC;
+}
+
+#signIn
+{
+
+}
+
+#chat
+{
+
+}
+
+
+#gameView
+{
+
+}
+
+.hide
+{
+    display: none;
+}
+
+.show
+{
+    display: inline-block;
+
+}
+
