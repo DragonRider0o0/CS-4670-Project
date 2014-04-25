@@ -255,7 +255,7 @@ namespace WindowsClient
             else
             {
                 string chatText = "(" + status + ") " + username + ": " + message + "";
-                Client.ServerChatMessages.Add(chatText); 
+                App.Current.Dispatcher.Invoke(() => Client.ServerChatMessages.Add(chatText)) ; 
             }
         }
 
@@ -271,7 +271,7 @@ namespace WindowsClient
             string command = response["Command"].Value<string>();
 
             string successText = "Success: " + command + "\n" + message + "\n";
-            MessageBox.Show(successText);
+            //MessageBox.Show(successText);
         }
 
         internal static void ServerFailHandler(JObject response)

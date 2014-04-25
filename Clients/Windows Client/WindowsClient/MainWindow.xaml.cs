@@ -7,6 +7,7 @@ using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -19,6 +20,7 @@ using System.Windows.Shapes;
 using System.Net.Http;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Timer = System.Timers.Timer;
 
 namespace WindowsClient
 {
@@ -34,25 +36,13 @@ namespace WindowsClient
             ServerChatBox.ItemsSource = Client.ServerChatMessages;
             GameChatBox.ItemsSource = Client.GameChatMessages;
 
-            //ServerChatBox.DataContext = Client.UiData.ServerChatMessages;
-            //GameChatBox.DataContext = Client.GameChatMessages;
-            //Test.Run();
+            UriBuilder server = new UriBuilder("http:\\\\localhost");
+            server.Port = 5500;
+            UriBuilder gameEngine = new UriBuilder("http:\\\\localhost");
+            gameEngine.Port = 6500;
 
-            //ServerChatBox = new TextBlock();
-            //Binding serverChatBinding = new Binding("ServerChatMessages");
-            //ServerChatBox.DataContext = Client.UiData.ServerChatMessages;
-            //serverChatBinding.Source = Client.UiData.ServerChatMessages;
-            //ServerChatBox.SetBinding(TextBlock.TextProperty, serverChatBinding);
-
-            //string serverAddressString = "http:\\\\localhost";
-            //UriBuilder serverURI = new UriBuilder(serverAddressString);
-            //serverURI.Port = 5500;
-            //Client.HTTPServerConnect(serverURI.Uri);
-
-            //string gameEngineAddressString = "http:\\\\localhost";
-            //UriBuilder gameEngineURI = new UriBuilder(serverAddressString);
-            //gameEngineURI.Port = 6500;
-            ////Client.HTTPGameEngineConnect(gameEngineURI.Uri);
+            Client.HTTPServerConnect(server.Uri);
+            Client.HTTPGameEngineConnect(gameEngine.Uri);
         }
 
         private void testServer()
@@ -87,12 +77,6 @@ namespace WindowsClient
             }
             else
             {
-                /*var signInElement = document.getElementById("signIn");
-                signInElement.className += " hide";
-
-                var signInElement = document.getElementById("game");
-                signInElement.className = "col-lg-7 show";*/
-
                 Client.SetAccountInformation(Username, Password, PlayerName);
 
                 JObject serverResponse = ServerClient.ServerSessionRequest();
@@ -100,6 +84,16 @@ namespace WindowsClient
 
                 var gameResponse = GameEngineClient.GameSessionRequest();
                 Client.HTTPGameEngineSend(gameResponse); ;
+
+                Timer serverTestTimer = new Timer();
+                serverTestTimer = new System.Timers.Timer(500);
+                serverTestTimer.Elapsed += new ElapsedEventHandler(delegate(object source, ElapsedEventArgs ev)
+                {
+                    serverResponse = ServerClient.ServerGetChatRequest();
+                    Client.HTTPServerSend(serverResponse);
+                });
+                serverTestTimer.Enabled = true;
+
             }
 
         }
@@ -118,7 +112,7 @@ namespace WindowsClient
             else
             {
                 Client.LastUserServerMessage = serverMessage;
-                string chatText = "(" + status + ") Me: " + serverMessage + "\n\n";
+                string chatText = "(" + status + ") Me: " + serverMessage + "";
                 Client.ServerChatMessages.Add(chatText); 
                 //ServerChatBox.Text = Client.ServerChatMessages;
                 
@@ -141,7 +135,7 @@ namespace WindowsClient
             else
             {
                 Client.LastUserGameMessage = gameMessage;
-                string chatText = "(" + status + ") Me: " + gameMessage + "\n\n";
+                string chatText = "(" + status + ") Me: " + gameMessage + "";
                 Client.GameChatMessages.Add(chatText); 
 
                 JObject gameResponse = GameEngineClient.GameChatRequest(gameMessage, status);
