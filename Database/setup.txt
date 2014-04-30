@@ -3,3 +3,6 @@ Create C:\data folder
 Create C:\data\db folder
 Run mongod.exe
 Run pip install pymongo 
+
+Download and Install MongoVUE
+Use MongoVUE to browse the database
