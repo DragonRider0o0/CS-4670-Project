@@ -47,7 +47,7 @@ function sendServerChatHandler()
     {
         Client.lastUserServerMessage = serverMessage;
         var chatText = "<p>(" + status + ") Me: " + serverMessage + "</p>";
-        Client.serverChatMessages = (chatText) + Client.serverChatMessages;
+        Client.serverChatMessages = Client.serverChatMessages + (chatText);
         serverChatBox = document.getElementById("serverChatBox");
         serverChatBox.innerHTML = Client.serverChatMessages;
 
@@ -269,7 +269,7 @@ var ServerClient = {
         else
         {
             var chatText = "<p>(" + status + ") " + username + ": " + message + "</p>";
-            Client.serverChatMessages = (chatText) + Client.serverChatMessages;
+            Client.serverChatMessages = Client.serverChatMessages + (chatText);
             serverChatBox = document.getElementById("serverChatBox");
             serverChatBox.innerHTML = Client.serverChatMessages;
         }

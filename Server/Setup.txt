@@ -7,3 +7,5 @@ Windows Setup
 		python get-pip.py	
 	Install Tornado
 		pip install tornado
+
+	You may need to add python, python/scripts, and mongo to 		the system path environment variable
